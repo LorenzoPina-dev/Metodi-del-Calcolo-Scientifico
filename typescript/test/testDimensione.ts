@@ -1,4 +1,4 @@
-import { Matrix } from '../src/matrici';
+import { Matrix } from '../src/core/Matrix';
 
 const EPS = 1e-10;
 

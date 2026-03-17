@@ -1,5 +1,5 @@
 import fs from "fs";
-import { Matrix } from "../src/matrici"; // Assicurati che il path punti alla tua classe Matrix
+import { Matrix } from "../src/core/Matrix"; // Assicurati che il path punti alla tua classe Matrix
 
 // Configurazione
 const minSize = 5;
@@ -51,15 +51,6 @@ for (const n of testSizes) {
     start = Date.now();
     A.inverse();
     timing["Inverse"] = Date.now() - start;
-    // --- Sparse LUP Test (creiamo A sparsa) ---
-    const As = Matrix.zeros(n, n);
-    for (let i = 0; i < n; i++) {
-        As.set(i, i, 10);          // diagonale principale non zero
-        if (i + 1 < n) As.set(i, i + 1, 1); // diagonale superiore
-    }
-    start = Date.now();
-    As.lup();
-    timing["Sparse_LUP"] = Date.now() - start;
 
     results[n] = timing;
 }
