@@ -1,10 +1,11 @@
 import { Matrix } from "../core";
+import { identity } from "../init";
 
 export function cholesky(A: Matrix): { L: Matrix } {
     if (A.rows !== A.cols) throw new Error("Matrix must be square");
     if (!A.isSymmetric()) throw new Error("Matrix is not symmetric");
     const N = A.rows;
-    const L = Matrix.identity(N);
+    const L = identity(N);
     for (let n = 0; n < N; n++) {
         let sum2 = 0;
         for (let m = 0; m <= n; m++) {

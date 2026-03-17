@@ -102,7 +102,18 @@ export class Matrix {
         return out;
     }
 
-    multiply(B: Matrix): Matrix {
+    multiply(B: Matrix | number): Matrix {
+    if (typeof B === "number") {
+        // Moltiplicazione per scalare
+        const out = new Matrix(this.rows, this.cols);
+        for (let i = 0; i < this.rows; i++) {
+            for (let j = 0; j < this.cols; j++) {
+                out.data[i * this.cols + j] = this.get(i, j) * B;
+            }
+        }
+        return out;
+    } else {
+        // Moltiplicazione matrice-matrice
         if (this.cols !== B.rows) throw new Error("Dim mismatch");
         const out = new Matrix(this.rows, B.cols);
         for (let i = 0; i < this.rows; i++) {
@@ -115,7 +126,7 @@ export class Matrix {
         }
         return out;
     }
-
+}
     transpose(): Matrix {
         const out = new Matrix(this.cols, this.rows);
         for (let i = 0; i < this.rows; i++)

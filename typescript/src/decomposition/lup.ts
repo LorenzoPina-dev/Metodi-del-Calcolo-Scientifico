@@ -1,4 +1,5 @@
 import { Matrix } from "../core";
+import { identity, zeros } from "../init";
 
 export function lup(A: Matrix): { L: Matrix; U: Matrix; P: number[] } {
     const n = A.rows;
@@ -26,7 +27,7 @@ export function lup(A: Matrix): { L: Matrix; U: Matrix; P: number[] } {
             for (let k = i + 1; k < n; k++) AClone.set(j, k, AClone.get(j, k) - factor * AClone.get(i, k));
         }
     }
-    const L = Matrix.identity(n), U = Matrix.zeros(n, n);
+    const L = identity(n), U = zeros(n, n);
     for (let i = 0; i < n; i++)
         for (let j = 0; j < n; j++)
             if (i > j) L.set(i, j, AClone.get(i, j));

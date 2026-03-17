@@ -1,3 +1,4 @@
 *.js
 *.m
 /typescript/node_modules
+/typescript/truth_matrices
