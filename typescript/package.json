@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "fs": "^0.0.1-security",
+    "plotly.js": "^3.4.0",
+    "plotly.js-dist": "^3.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/plotly.js": "^3.0.10"
+  }
+}

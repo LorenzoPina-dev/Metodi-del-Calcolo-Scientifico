@@ -1,0 +1,92 @@
+{
+  "5": {
+    "LUP": 1,
+    "LU": 0,
+    "LU_TotalPivot": 0,
+    "Solve": 0,
+    "Determinant": 0,
+    "Inverse": 0,
+    "Sparse_LUP": 0
+  },
+  "55": {
+    "LUP": 6,
+    "LU": 18,
+    "LU_TotalPivot": 16,
+    "Solve": 0,
+    "Determinant": 0,
+    "Inverse": 1,
+    "Sparse_LUP": 0
+  },
+  "105": {
+    "LUP": 1,
+    "LU": 164,
+    "LU_TotalPivot": 163,
+    "Solve": 0,
+    "Determinant": 1,
+    "Inverse": 3,
+    "Sparse_LUP": 0
+  },
+  "155": {
+    "LUP": 1,
+    "LU": 710,
+    "LU_TotalPivot": 713,
+    "Solve": 1,
+    "Determinant": 1,
+    "Inverse": 4,
+    "Sparse_LUP": 1
+  },
+  "205": {
+    "LUP": 2,
+    "LU": 2126,
+    "LU_TotalPivot": 2029,
+    "Solve": 2,
+    "Determinant": 2,
+    "Inverse": 9,
+    "Sparse_LUP": 2
+  },
+  "255": {
+    "LUP": 3,
+    "LU": 4953,
+    "LU_TotalPivot": 4707,
+    "Solve": 5,
+    "Determinant": 4,
+    "Inverse": 15,
+    "Sparse_LUP": 3
+  },
+  "305": {
+    "LUP": 6,
+    "LU": 9978,
+    "LU_TotalPivot": 9299,
+    "Solve": 6,
+    "Determinant": 5,
+    "Inverse": 28,
+    "Sparse_LUP": 5
+  },
+  "355": {
+    "LUP": 10,
+    "LU": 17969,
+    "LU_TotalPivot": 16931,
+    "Solve": 9,
+    "Determinant": 10,
+    "Inverse": 38,
+    "Sparse_LUP": 8
+  },
+  "405": {
+    "LUP": 12,
+    "LU": 30457,
+    "LU_TotalPivot": 28753,
+    "Solve": 16,
+    "Determinant": 12,
+    "Inverse": 58,
+    "Sparse_LUP": 13
+  },
+  "455": {
+    "LUP": 18,
+    "LU": 48353,
+    "LU_TotalPivot": 45458,
+    "Solve": 21,
+    "Determinant": 18,
+    "Inverse": 81,
+    "Sparse_LUP": 17
+  }
+}
