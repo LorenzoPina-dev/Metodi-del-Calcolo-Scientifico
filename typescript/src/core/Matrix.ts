@@ -1,16 +1,17 @@
 import { lup } from "../decomposition";
 import { identity, zeros } from "../init";
 import { solve } from "../solver";
+import { Float64M, INumeric } from "../type"
 
 export class Matrix {
-    data: Float64Array;
+    data: Array<INumeric>;
     rows: number;
     cols: number;
 
-    constructor(rows: number, cols: number, data?: Float64Array) {
+    constructor(rows: number, cols: number, data?: Array<INumeric>) {
         this.rows = rows;
         this.cols = cols;
-        this.data = data ?? new Float64Array(rows * cols);
+        this.data = data ?? new Array<INumeric>(rows * cols);
     }
 
     // ---------------- INDEX ----------------
@@ -18,24 +19,24 @@ export class Matrix {
         return i * this.cols + j;
     }
 
-    get(i: number, j: number): number {
+    get(i: number, j: number): INumeric {
         return this.data[this.idx(i, j)];
     }
 
-    set(i: number, j: number, v: number): void {
+    set(i: number, j: number, v: INumeric): void {
         this.data[this.idx(i, j)] = v;
     }
 
     // ---------------- CONSTANTS ----------------
     static EPS = 1e-10;
 
-    static isZero(x: number): boolean {
+    static isZero(x: INumeric): boolean {
         return Math.abs(x) < Matrix.EPS;
     }
 
     // ---------------- COPY ----------------
     clone(): Matrix {
-        return new Matrix(this.rows, this.cols, new Float64Array(this.data));
+        return new Matrix(this.rows, this.cols, [...this.data]);
     }
 
     // ---------------- MATRICES ----------------
@@ -60,7 +61,7 @@ export class Matrix {
         if (this.rows !== this.cols) return false;
         for (let i = 0; i < this.rows; i++) {
             for (let j = i + 1; j < this.cols; j++) {
-                if (Math.abs(this.get(i, j) - this.get(j, i)) > Matrix.EPS) return false;
+                if (Math.abs(this.get(i, j).subtract(this.get(j, i))) > Matrix.EPS) return false;
             }
         }
         return true;
@@ -71,15 +72,15 @@ export class Matrix {
         if (B.rows === 1 && B.cols === this.cols) {
             for (let i = 0; i < this.rows; i++)
                 for (let j = 0; j < this.cols; j++)
-                    out.set(i, j, this.get(i, j) + B.get(0, j));
+                    out.set(i, j, this.get(i, j).add(B.get(0, j)));
         } else if (B.cols === 1 && B.rows === this.rows) {
             for (let i = 0; i < this.rows; i++)
                 for (let j = 0; j < this.cols; j++)
-                    out.set(i, j, this.get(i, j) + B.get(i, 0));
+                    out.set(i, j, this.get(i, j).add(B.get(i, 0)));
         } else if (B.rows === this.rows && B.cols === this.cols) {
             for (let i = 0; i < this.rows; i++)
                 for (let j = 0; j < this.cols; j++)
-                    out.set(i, j, this.get(i, j) + B.get(i, j));
+                    out.set(i, j, this.get(i, j).add( B.get(i, j)));
         } else throw new Error("Incompatible shapes for add");
         return out;
     }
@@ -89,44 +90,44 @@ export class Matrix {
         if (B.rows === 1 && B.cols === this.cols) {
             for (let i = 0; i < this.rows; i++)
                 for (let j = 0; j < this.cols; j++)
-                    out.set(i, j, this.get(i, j) - B.get(0, j));
+                    out.set(i, j, this.get(i, j).subtract(B.get(0, j)));
         } else if (B.cols === 1 && B.rows === this.rows) {
             for (let i = 0; i < this.rows; i++)
                 for (let j = 0; j < this.cols; j++)
-                    out.set(i, j, this.get(i, j) - B.get(i, 0));
+                    out.set(i, j, this.get(i, j).subtract(B.get(i, 0)));
         } else if (B.rows === this.rows && B.cols === this.cols) {
             for (let i = 0; i < this.rows; i++)
                 for (let j = 0; j < this.cols; j++)
-                    out.set(i, j, this.get(i, j) - B.get(i, j));
+                    out.set(i, j, this.get(i, j).subtract(B.get(i, j)));
         } else throw new Error("Incompatible shapes for subtract");
         return out;
     }
 
-    multiply(B: Matrix | number): Matrix {
-    if (typeof B === "number") {
-        // Moltiplicazione per scalare
-        const out = new Matrix(this.rows, this.cols);
-        for (let i = 0; i < this.rows; i++) {
-            for (let j = 0; j < this.cols; j++) {
-                out.data[i * this.cols + j] = this.get(i, j) * B;
-            }
-        }
-        return out;
-    } else {
-        // Moltiplicazione matrice-matrice
-        if (this.cols !== B.rows) throw new Error("Dim mismatch");
-        const out = new Matrix(this.rows, B.cols);
-        for (let i = 0; i < this.rows; i++) {
-            for (let k = 0; k < this.cols; k++) {
-                const aik = this.get(i, k);
-                for (let j = 0; j < B.cols; j++) {
-                    out.data[i * B.cols + j] += aik * B.get(k, j);
+    multiply(B: Matrix | INumeric): Matrix {
+        if (B instanceof Matrix) {
+            // Moltiplicazione matrice-matrice
+            if (this.cols !== B.rows) throw new Error("Dim mismatch");
+            const out = new Matrix(this.rows, B.cols);
+            for (let i = 0; i < this.rows; i++) {
+                for (let k = 0; k < this.cols; k++) {
+                    const aik = this.get(i, k);
+                    for (let j = 0; j < B.cols; j++) {
+                        out.data[i * B.cols + j] += aik * B.get(k, j);
+                    }
                 }
             }
-        }
-        return out;
+            return out;
+        }else{
+            // Moltiplicazione per scalare
+            const out = new Matrix(this.rows, this.cols);
+            for (let i = 0; i < this.rows; i++) {
+                for (let j = 0; j < this.cols; j++) {
+                    out.data[i * this.cols + j] = this.get(i, j).multiply(B);
+                }
+            }
+            return out;
+        }  
     }
-}
     transpose(): Matrix {
         const out = new Matrix(this.cols, this.rows);
         for (let i = 0; i < this.rows; i++)

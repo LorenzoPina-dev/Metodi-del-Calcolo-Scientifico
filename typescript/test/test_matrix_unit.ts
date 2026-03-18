@@ -117,4 +117,58 @@ function approxEqual(A: Matrix, B: Matrix, eps = EPS) {
   console.log('testSumsAndMax passed');
 })();
 
+// 6) Transpose
+(function testTranspose() {
+  const A = new Matrix(2, 3, new Float64Array([1, 2, 3, 4, 5, 6]));
+  const T = A.transpose();
+  if (T.rows !== 3 || T.cols !== 2) throw new Error('transpose shape incorrect');
+  for (let i = 0; i < A.rows; i++) for (let j = 0; j < A.cols; j++) assertApprox(T.get(j, i), A.get(i, j));
+  console.log('testTranspose passed');
+})();
+
+// 7) triu and tril
+(function testTriuTril() {
+  const A = new Matrix(3, 3, new Float64Array([1,2,3,4,5,6,7,8,9]));
+  const U = A.triu();
+  const L = A.tril();
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+    if (j < i) assertApprox(U.get(i, j), 0);
+    else assertApprox(U.get(i, j), A.get(i, j));
+    if (j > i) assertApprox(L.get(i, j), 0);
+    else assertApprox(L.get(i, j), A.get(i, j));
+  }
+  console.log('testTriuTril passed');
+})();
+
+// 8) isSymmetric
+(function testIsSymmetric() {
+  const S = new Matrix(2,2,new Float64Array([1,3,3,4]));
+  if (!S.isSymmetric()) throw new Error('symmetric matrix reported non-symmetric');
+  const NS = new Matrix(2,2,new Float64Array([1,2,3,4]));
+  if (NS.isSymmetric()) throw new Error('non-symmetric matrix reported symmetric');
+  console.log('testIsSymmetric passed');
+})();
+
+// 9) determinant and inverse consistency
+(function testDetInverse() {
+  const A = new Matrix(2,2,new Float64Array([4,7,2,6]));
+  const detA = A.det();
+  // det should be 4*6 - 7*2 = 10
+  assertApprox(detA, 10);
+  const Inv = A.inverse();
+  const I = A.multiply(Inv);
+  const Id = Matrix.identity(2);
+  approxEqual(I, Id, 1e-6);
+  console.log('testDetInverse passed');
+})();
+
+// 10) toString formatting
+(function testToString() {
+  const A = new Matrix(1,2,new Float64Array([1.2345, 6.789]));
+  const s = A.toString();
+  // should contain two numbers with 3 decimal places
+  if (!/1.235/.test(s) || !/6.789/.test(s)) throw new Error('toString formatting incorrect');
+  console.log('testToString passed');
+})();
+
 console.log('--- MATRIX UNIT TESTS COMPLETED ---');
