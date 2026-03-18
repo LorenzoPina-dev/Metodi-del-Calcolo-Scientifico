@@ -1,0 +1,48 @@
+import { Matrix } from "../../core";
+import { qr } from "../../decomposition";
+import { zeros } from "../init";
+
+/**
+ * Matrice con Valori Singolari Casuali
+ * * Descrizione:
+ * Crea una matrice con un numero di condizionamento (kappa) specificato.
+ * * Proprietà:
+ * - Permette di testare algoritmi di risoluzione lineare con matrici "difficili".
+ * * Funzionamento:
+ * 1. Genera due matrici ortogonali U e V tramite QR di matrici gaussiane.
+ * 2. Crea una diagonale Sigma con distribuzione geometrica (mode 3).
+ * 3. Restituisce A = U * Sigma * V^T.
+ */
+export function randsvd(n: number): Matrix {
+    let kappa = Math.sqrt(1 / Number.EPSILON);
+    let G1 = generateNormalDistributionMatrix(n, n);
+    let G2 = generateNormalDistributionMatrix(n, n);
+
+    let { Q: U } = qr(G1);
+    let { Q: V } = qr(G2);
+
+    let sigma = new Float64Array(n);
+    for (let i = 1; i <= n; i++) {
+        sigma[i - 1] = Math.pow(kappa, -(i - 1) / (n - 1));
+    }
+    
+    // A = U * diag(sigma) * V^T
+    const SigmaMat = new Matrix(n, n, sigma); // Assumendo costruttore per diagonale
+    return U.multiply(SigmaMat.multiply(V.transpose()));
+}
+
+// Supporto: Box-Muller per distribuzione normale
+function gaussianRandom(): number {
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random(); 
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+}
+
+function generateNormalDistributionMatrix(rows: number, cols: number): Matrix {
+    const matrix = zeros(rows, cols);
+    for (let i = 1; i <= rows; i++)
+        for (let j = 1; j <= cols; j++)
+            matrix.set(i - 1, j - 1, gaussianRandom());
+    return matrix;
+}

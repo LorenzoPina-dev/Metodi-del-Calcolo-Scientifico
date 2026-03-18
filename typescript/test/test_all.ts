@@ -108,7 +108,7 @@ function generateMatrix(name: string, params: any): Matrix {
         case "cauchy":
             return M.cauchy(params.x, params.y);
         case "binomial":
-            return M.binomial(params.n, params.p);
+            return M.binomial(params.n);
         case "randsvd":
             return M.randsvd(params.n);
         case "toeplitz":
@@ -120,8 +120,7 @@ function generateMatrix(name: string, params: any): Matrix {
         case "kahan":
             return M.kahan(params.n);
         case "wathen":
-            return M.wathen(params.nx,params.ny);       
-
+            return M.wathen(params.nx,params.ny);  
         default:
             throw new Error(`Not implemented: ${name}`);
     }
