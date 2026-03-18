@@ -1,14 +1,16 @@
 // core/MatrixBase.ts
 
+import { INumeric } from "../type";
+
 export class MatrixBase {
-    data: Float64Array;
+    data: Array<INumeric>;
     rows: number;
     cols: number;
 
-    constructor(rows: number, cols: number, data?: Float64Array) {
+    constructor(rows: number, cols: number, data?: Array<INumeric>) {
         this.rows = rows;
         this.cols = cols;
-        this.data = data ?? new Float64Array(rows * cols);
+        this.data = data ?? new Array<INumeric>(rows * cols);
     }
 
     // ---------------- INDEX ----------------
@@ -16,19 +18,19 @@ export class MatrixBase {
         return i * this.cols + j;
     }
 
-    get(i: number, j: number): number {
+    get(i: number, j: number): INumeric {
         return this.data[this.idx(i, j)];
     }
 
-    set(i: number, j: number, v: number): void {
+    set(i: number, j: number, v: INumeric): void {
         this.data[this.idx(i, j)] = v;
     }
 
     // ---------------- CONSTANTS ----------------
     static EPS = 1e-10;
 
-    static isZero(x: number): boolean {
-        return Math.abs(x) < MatrixBase.EPS;
+    static isZero(x: INumeric): boolean {
+        return abs(x) < MatrixBase.EPS;
     }
 
     // ---------------- COPY ----------------
@@ -37,7 +39,7 @@ export class MatrixBase {
         return new Ctor(
             this.rows,
             this.cols,
-            new Float64Array(this.data)
+            Array.from(this.data)
         );
     }
 
@@ -47,7 +49,7 @@ export class MatrixBase {
 
         for (let i = 0; i < this.rows; i++) {
             for (let j = 0; j < this.cols; j++) {
-                s += this.get(i, j).toFixed(3) + " ";
+                s += this.get(i, j).toString() + " ";
             }
             s += "\n";
         }
