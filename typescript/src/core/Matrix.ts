@@ -1,3 +1,4 @@
+import { smartInverse } from "../algoritm/inverse";
 import { lup } from "../decomposition";
 import { identity, zeros } from "../init";
 import { solve } from "../solver";
@@ -189,8 +190,24 @@ export class Matrix {
         return det * sign;
     }
 
-    inverse(): Matrix {
-        return solve(this, identity(this.rows));
+    inverse():Matrix{
+        return smartInverse(this);
+    }
+
+
+    /**
+     * Verifica se la matrice è ortogonale: A^T * A ≈ I
+     */
+    isActuallyOrthogonal(): boolean {
+        const AtA = this.transpose().multiply(this);
+        const n = this.rows;
+        for (let i = 1; i <= n; i++) {
+            for (let j = 1; j <= n; j++) {
+                const target = (i === j ? 1 : 0);
+                if (Math.abs(AtA.get(i - 1, j - 1) - target) > Matrix.EPS) return false;
+            }
+        }
+        return true;
     }
 
     // ---------------- STAMPA ----------------

@@ -38,7 +38,9 @@ function loadJSON(file: string): { matrix: Matrix; params: any } {
 /* ---------- ASSERT ---------- */
 function assertClose(A: Matrix, B: Matrix, tol = 1e-8) {
     if (A.rows !== B.rows || A.cols !== B.cols)
+    {
         throw new Error("Shape mismatch");
+    }
 
     for (let i = 0; i < A.rows; i++) {
         for (let j = 0; j < A.cols; j++) {
@@ -95,8 +97,8 @@ function generateMatrix(name: string, params: any): Matrix {
             return M.circul(params.c);
         case "tridiag":
             return M.tridiag(params.a, params.b, params.c);
-        case "smoke":
-            return M.smoke(params.n);
+        //case "smoke":!!!!!!!!!!!!!!!!!!!!!!!!!!COMPLESSI!!!!!!!!!!!!!!!!!!!!!!
+        //    return M.smoke(params.n);
         case "dorr":
             return M.dorr(params.n);
         case "hanowa":
@@ -117,6 +119,8 @@ function generateMatrix(name: string, params: any): Matrix {
             return M.invhess(params.n);
         case "kahan":
             return M.kahan(params.n);
+        case "wathen":
+            return M.wathen(params.nx,params.ny);       
 
         default:
             throw new Error(`Not implemented: ${name}`);

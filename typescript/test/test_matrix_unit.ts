@@ -117,4 +117,94 @@ function approxEqual(A: Matrix, B: Matrix, eps = EPS) {
   console.log('testSumsAndMax passed');
 })();
 
+// 6) Scalar multiplication
+(function testScalarMultiply() {
+  const A = new Matrix(2, 2, new Float64Array([1, 2, 3, 4]));
+  const S = A.multiply(3);
+  for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) assertApprox(S.get(i, j), A.get(i, j) * 3);
+  console.log('testScalarMultiply passed');
+})();
+
+// 7) Subtract broadcasting and incompatible shapes
+(function testSubtractBroadcastingAndErrors() {
+  const A = new Matrix(2, 3, new Float64Array([1, 2, 3, 4, 5, 6]));
+  // row vector broadcast
+  const row = new Matrix(1, 3, new Float64Array([1, 1, 1]));
+  const diffRow = A.subtract(row);
+  for (let i = 0; i < 2; i++) for (let j = 0; j < 3; j++) assertApprox(diffRow.get(i, j), A.get(i, j) - 1);
+
+  // column vector broadcast
+  const col = new Matrix(2, 1, new Float64Array([10, 20]));
+  const diffCol = A.subtract(col);
+  for (let i = 0; i < 2; i++) for (let j = 0; j < 3; j++) assertApprox(diffCol.get(i, j), A.get(i, j) - (i === 0 ? 10 : 20));
+
+  // full-matrix subtract
+  const B = Matrix.ones(2, 3);
+  const C = A.subtract(B);
+  for (let i = 0; i < 2; i++) for (let j = 0; j < 3; j++) assertApprox(C.get(i, j), A.get(i, j) - 1);
+
+  // incompatible shapes should throw
+  let threw = false;
+  try {
+    A.subtract(Matrix.ones(3, 2));
+  } catch (e) {
+    threw = true;
+  }
+  if (!threw) throw new Error('subtract should throw on incompatible shapes');
+
+  console.log('testSubtractBroadcastingAndErrors passed');
+})();
+
+// 8) Upper and lower triangular extraction
+(function testTriuTril() {
+  const A = new Matrix(3, 3, new Float64Array([
+    1, 2, 3,
+    4, 5, 6,
+    7, 8, 9
+  ]));
+  const U = A.triu();
+  const expectedU = new Matrix(3, 3, new Float64Array([
+    1, 2, 3,
+    0, 5, 6,
+    0, 0, 9
+  ]));
+  approxEqual(U, expectedU);
+
+  const L = A.tril();
+  const expectedL = new Matrix(3, 3, new Float64Array([
+    1, 0, 0,
+    4, 5, 0,
+    7, 8, 9
+  ]));
+  approxEqual(L, expectedL);
+
+  console.log('testTriuTril passed');
+})();
+
+// 9) Symmetry check
+(function testSymmetry() {
+  const S = new Matrix(2, 2, new Float64Array([1, 2, 2, 3]));
+  if (!S.isSymmetric()) throw new Error('symmetric matrix reported as non-symmetric');
+
+  const N = new Matrix(2, 2, new Float64Array([1, 0, 2, 3]));
+  if (N.isSymmetric()) throw new Error('non-symmetric matrix reported as symmetric');
+
+  console.log('testSymmetry passed');
+})();
+
+// 10) Orthogonality check
+(function testOrthogonality() {
+  const t = Math.PI / 4;
+  const R = new Matrix(2, 2, new Float64Array([
+    Math.cos(t), -Math.sin(t),
+    Math.sin(t), Math.cos(t)
+  ]));
+  if (!R.isActuallyOrthogonal()) throw new Error('rotation matrix should be orthogonal');
+
+  const A = new Matrix(2, 2, new Float64Array([1, 2, 3, 4]));
+  if (A.isActuallyOrthogonal()) throw new Error('non-orthogonal matrix reported as orthogonal');
+
+  console.log('testOrthogonality passed');
+})();
+
 console.log('--- MATRIX UNIT TESTS COMPLETED ---');

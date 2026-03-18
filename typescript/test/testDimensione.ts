@@ -1,3 +1,4 @@
+import { lup, solve } from '../src';
 import { Matrix } from '../src/core/Matrix';
 
 const EPS = 1e-10;
@@ -22,13 +23,13 @@ function benchmarkMatrix(n: number) {
 
   // ---- LU decomposition ----
   console.time('LU');
-  const { L, U, P } = A.lup();
+  const { L, U, P } = lup(A);
   console.timeEnd('LU');
 
   // ---- Solve Ax = b ----
   const b = randomMatrix(n);
   console.time('Solve');
-  const x = A.solve(b);
+  const x = solve(A,b);
   console.timeEnd('Solve');
 
   // Verifica Ax ≈ b
