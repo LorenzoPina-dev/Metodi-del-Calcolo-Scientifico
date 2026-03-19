@@ -1,4 +1,4 @@
-import { Matrix } from "../core";
+import { Matrix } from "..";
 import { identity } from "../init";
 
 export function lu(A: Matrix): { L: Matrix; U: Matrix } {
@@ -13,8 +13,8 @@ export function lu(A: Matrix): { L: Matrix; U: Matrix } {
             Mn.set(i, n, -val);
             Mn_inv.set(i, n, val);
         }
-        A_old = Mn.multiply(A_old);
-        L = L.multiply(Mn_inv);
+        A_old = Mn.mul(A_old);
+        L = L.mul(Mn_inv);
     }
     return { L, U: A_old };
 }

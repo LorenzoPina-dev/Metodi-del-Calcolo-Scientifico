@@ -1,11 +1,13 @@
-import { Matrix } from "../core";
+import { Matrix } from "..";
 import { identity, zeros } from "../init";
 
-export function lup(A: Matrix): { L: Matrix; U: Matrix; P: number[] } {
+export function lup(A: Matrix): { L: Matrix; U: Matrix; P: number[], swaps: number } {
     const n = A.rows;
     if (n !== A.cols) throw new Error("Square only");
     const AClone = A.clone();
     const P = Array.from({ length: n }, (_, i) => i);
+    let swaps = 0;
+
     for (let i = 0; i < n; i++) {
         let max = i, maxVal = Math.abs(AClone.get(i, i));
         for (let k = i + 1; k < n; k++) {
@@ -14,6 +16,7 @@ export function lup(A: Matrix): { L: Matrix; U: Matrix; P: number[] } {
         }
         if (Matrix.isZero(maxVal)) throw new Error("Singular matrix");
         if (max !== i) {
+            swaps++;
             for (let j = 0; j < n; j++) {
                 const tmp = AClone.get(i, j);
                 AClone.set(i, j, AClone.get(max, j));
@@ -32,5 +35,5 @@ export function lup(A: Matrix): { L: Matrix; U: Matrix; P: number[] } {
         for (let j = 0; j < n; j++)
             if (i > j) L.set(i, j, AClone.get(i, j));
             else U.set(i, j, AClone.get(i, j));
-    return { L, U, P };
+    return { L, U, P, swaps };
 }

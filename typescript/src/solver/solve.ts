@@ -1,4 +1,4 @@
-import { Matrix } from "../core";
+import { Matrix } from "..";
 import { lup } from "../decomposition";
 import { solveLowerTriangular, solveUpperTriangular } from "./triangular";
 

@@ -1,10 +1,10 @@
-import { Matrix } from "../core";
+import { Matrix } from "..";
 import { zeros } from "../init";
 
 export function solveLowerTriangular(L: Matrix, b: Matrix): Matrix {
     const N = L.rows;
     if (N !== L.cols) throw new Error("Matrix L must be square");
-    if (L.subtract(L.tril()).totalSum() > 1e-15) throw new Error("Matrix L is not lower triangular");
+    if (L.sub(Matrix.tril(L)).totalSum() > 1e-15) throw new Error("Matrix L is not lower triangular");
     const x = zeros(N, b.cols);
     for (let j = 0; j < b.cols; j++) {
         x.set(0, j, b.get(0, j) / L.get(0, 0));
@@ -19,7 +19,7 @@ export function solveLowerTriangular(L: Matrix, b: Matrix): Matrix {
 export function solveUpperTriangular(U: Matrix, b: Matrix): Matrix { 
     const N = U.rows;
         if (N !== U.cols) throw new Error("Matrix U must be square");
-        if (U.subtract(U.triu()).totalSum() > 1e-15) throw new Error("Matrix U is not upper triangular");
+        if (U.sub(Matrix.triu(U)).totalSum() > 1e-15) throw new Error("Matrix U is not upper triangular");
         const x = zeros(N, b.cols);
         for (let j = 0; j < b.cols; j++) {
             x.set(N - 1, j, b.get(N - 1, j) / U.get(N - 1, N - 1));

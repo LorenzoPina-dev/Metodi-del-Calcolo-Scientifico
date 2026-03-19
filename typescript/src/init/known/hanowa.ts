@@ -1,4 +1,4 @@
-import { Matrix } from "../../core";
+import { Matrix } from "../..";
 import { zeros, identity } from "../init";
 
 /**

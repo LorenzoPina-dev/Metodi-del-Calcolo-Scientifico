@@ -1,4 +1,4 @@
-import { Matrix } from "../core";
+import { Matrix } from "..";
 import { zeros } from "./init";
 
 export function toeplitz(c: number[], r?: number[]): Matrix {

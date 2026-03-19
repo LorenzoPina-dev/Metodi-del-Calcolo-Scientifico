@@ -1,5 +1,5 @@
-import { lup, solve } from '../src';
-import { Matrix } from '../src/core/Matrix';
+import { Matrix } from '../src';
+
 
 const EPS = 1e-10;
 
@@ -23,17 +23,17 @@ function benchmarkMatrix(n: number) {
 
   // ---- LU decomposition ----
   console.time('LU');
-  const { L, U, P } = lup(A);
+  const { L, U, P } = Matrix.decomp.lup(A);
   console.timeEnd('LU');
 
   // ---- Solve Ax = b ----
   const b = randomMatrix(n);
   console.time('Solve');
-  const x = solve(A,b);
+  const x = Matrix.solver.solve(A,b);
   console.timeEnd('Solve');
 
   // Verifica Ax ≈ b
-  const Ax = A.multiply(x);
+  const Ax = A.mul(x);
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < b.cols; j++) {
       assertApprox(Ax.get(i, j), b.get(i, j), `Solve failed for size ${n}`);
@@ -46,7 +46,7 @@ function benchmarkMatrix(n: number) {
   console.timeEnd('Inverse');
 
   // Verifica A * Ainv ≈ I
-  const I = A.multiply(Ainv);
+  const I = A.mul(Ainv);
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
       assertApprox(I.get(i, j), i === j ? 1 : 0, `Inverse failed for size ${n}`);
@@ -60,7 +60,7 @@ function benchmarkMatrix(n: number) {
 
   // ---- Transpose ----
   console.time('Transpose');
-  const At = A.transpose();
+  const At = A.t();
   console.timeEnd('Transpose');
 
   // ---- Sum / Max ----
@@ -76,8 +76,8 @@ function benchmarkMatrix(n: number) {
     const rowAdd = new Matrix(1, n);
     for (let j = 0; j < n; j++) rowAdd.set(0, j, 1);
     const Bcast = A.add(rowAdd);
-    const Utri = A.triu();
-    const Ltri = A.tril();
+    const Utri = Matrix.triu(A);
+    const Ltri = Matrix.tril(A);
   }
   console.timeEnd('Slice/Add/Triangular');
 

@@ -1,4 +1,4 @@
-import { Matrix } from "../core";
+import { Matrix } from "..";
 import { identity } from "../init";
 
 export function luPivotingTotal(A: Matrix): { P: Matrix; L: Matrix; U: Matrix } {
@@ -16,13 +16,13 @@ export function luPivotingTotal(A: Matrix): { P: Matrix; L: Matrix; U: Matrix } 
             const Pn = identity(n);
             Pn.set(col, col, 0); Pn.set(pivotRow, pivotRow, 0);
             Pn.set(col, pivotRow, 1); Pn.set(pivotRow, col, 1);
-            P = Pn.multiply(P); A_old = Pn.multiply(A_old);
+            P = Pn.mul(P); A_old = Pn.mul(A_old);
         }
         const Ltilden = identity(n);
         for (let i = col + 1; i < n; i++) Ltilden.set(i, col, -A_old.get(i, col) / A_old.get(col, col));
-        M = Ltilden.multiply(M); A_old = Ltilden.multiply(A_old);
+        M = Ltilden.mul(M); A_old = Ltilden.mul(A_old);
     }
     const U = A_old;
-    const L = P.multiply(M.inverse());
+    const L = P.mul(M.inverse());
     return { P, L, U };
 }

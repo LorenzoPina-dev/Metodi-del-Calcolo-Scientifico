@@ -1,4 +1,4 @@
-import { Matrix } from "../../core";
+import { Matrix } from "../..";
 import { triu } from "../../decomposition/triu";
 import { zeros } from "../init";
 import { minij } from "./minij";

@@ -1,5 +1,5 @@
 import fs from "fs";
-import { Matrix } from "../src/core/Matrix"; // Assicurati che il path punti alla tua classe Matrix
+import { Matrix } from "../src"; // Assicurati che il path punti alla tua classe Matrix
 
 // Configurazione
 const minSize = 5;
@@ -24,22 +24,23 @@ for (const n of testSizes) {
 
     // --- LUP Decomposition ---
     let start = Date.now();
-    const { L, U, P } = A.lup();
+    const { L, U, P } = Matrix.decomp.lup(A);
     timing["LUP"] = Date.now() - start;
 
     // --- LU Decomposition (no pivot) ---
     start = Date.now();
-    Matrix.lu(A);
+    Matrix.decomp.lu(A);
     timing["LU"] = Date.now() - start;
 
     // --- LU Total Pivoting ---
     start = Date.now();
-    Matrix.luPivotingTotal(A);
+    Matrix.decomp.luPivotingTotal(A);
     timing["LU_TotalPivot"] = Date.now() - start;
 
     // --- Solve system ---
     start = Date.now();
-    A.solve(b);
+    Matrix.solver.solve(A, b);
+    // .solve(b);
     timing["Solve"] = Date.now() - start;
 
     // --- Determinant ---

@@ -1,4 +1,4 @@
-import { Matrix } from "../core";
+import { Matrix } from "..";
 import { identity, zeros } from "../init";
 
 export function qr(A: Matrix): { Q: Matrix; R: Matrix } {

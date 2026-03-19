@@ -1,4 +1,4 @@
-import { Matrix } from "../../core";
+import { Matrix } from "../..";
 import { qr } from "../../decomposition";
 import { zeros } from "../init";
 
@@ -28,7 +28,7 @@ export function randsvd(n: number): Matrix {
     
     // A = U * diag(sigma) * V^T
     const SigmaMat = new Matrix(n, n, sigma); // Assumendo costruttore per diagonale
-    return U.multiply(SigmaMat.multiply(V.transpose()));
+    return U.mul(SigmaMat.mul(V.t()));
 }
 
 // Supporto: Box-Muller per distribuzione normale

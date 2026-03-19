@@ -1,4 +1,4 @@
-import { Matrix } from "../core";
+import { Matrix } from "..";
 import { decomposeDLU } from "../decomposition/dlu";
 import { _hasConverged } from "./_hasConverged";
 
@@ -19,16 +19,16 @@ export function solveGaussSeidelMat(A:Matrix, b: Matrix, tol: number = Matrix.EP
 
     // Costruzione della matrice di iterazione T e del vettore C
     // T = - (D + L)^-1 * U
-    const T = DL_inv.multiply(U).multiply(-1);
+    const T = DL_inv.mul(U).mul(-1);
     // C = (D + L)^-1 * b
-    const C = DL_inv.multiply(b);
+    const C = DL_inv.mul(b);
 
     let x = new Matrix(A.rows, 1);
     let xNext = new Matrix(A.rows, 1);
 
     for (let k = 1; k <= maxIter; k++) {
         // x_next = T * x + C
-        xNext = T.multiply(x).add(C);
+        xNext = T.mul(x).add(C);
 
         if (_hasConverged(x, xNext, tol)) return xNext;
         x = xNext;

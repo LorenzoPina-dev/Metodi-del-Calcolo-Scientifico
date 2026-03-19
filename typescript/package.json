@@ -1,10 +1,17 @@
 {
+  "type": "module",
+  "scripts": {
+    "test": "vitest"
+  },
   "dependencies": {
     "fs": "^0.0.1-security",
+    "jsdom": "^29.0.0",
     "plotly.js": "^3.4.0",
-    "plotly.js-dist": "^3.4.0"
+    "plotly.js-dist": "^3.4.0",
+    "vitest": "^4.1.0"
   },
   "devDependencies": {
+    "@types/jsdom": "^28.0.1",
     "@types/node": "^25.5.0",
     "@types/plotly.js": "^3.0.10"
   }

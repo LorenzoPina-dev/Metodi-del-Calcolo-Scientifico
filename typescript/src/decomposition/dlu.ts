@@ -1,4 +1,4 @@
-import { Matrix } from "../core";
+import { Matrix } from "..";
 
 /**
  * Scompone la matrice A in forma additiva: A = D + L + U

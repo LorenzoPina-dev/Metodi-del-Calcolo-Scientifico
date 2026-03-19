@@ -1,5 +1,5 @@
 import { inverseDiagonal } from "../algoritm/inverse";
-import { Matrix } from "../core";
+import { Matrix } from "..";
 import { decomposeDLU } from "../decomposition/dlu";
 import { _hasConverged } from "./_hasConverged";
 
@@ -20,16 +20,16 @@ export function solveJacobiMat(A:Matrix, b: Matrix, tol: number = Matrix.EPS, ma
 
     // Costruzione della matrice di iterazione T e del vettore C
     // T = - D^-1 * (L + U)
-    const T = D_inv.multiply(LU).multiply(-1);
+    const T = D_inv.mul(LU).mul(-1);
     // C = D^-1 * b
-    const C = D_inv.multiply(b);
+    const C = D_inv.mul(b);
 
     let x = new Matrix(A.rows, 1);
     let xNext = new Matrix(A.rows, 1);
 
     for (let k = 1; k <= maxIter; k++) {
         // x_next = T * x + C
-        xNext = T.multiply(x).add(C);
+        xNext = T.mul(x).add(C);
 
         if (_hasConverged(x, xNext, tol)) return xNext;
         x = xNext; // Nessun bisogno di clone(), l'assegnazione va bene perché T.multiply crea una nuova matrice

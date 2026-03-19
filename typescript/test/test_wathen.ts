@@ -1,6 +1,5 @@
 import {wathen} from "../src/init";
-import { Matrix } from "../src"; // adattalo al tuo progetto
-import { cholesky } from "../src"; 
+import { Matrix } from "../src"; 
 // ===============================
 // Utility
 // ===============================
@@ -75,7 +74,7 @@ function testWathen(nx: number, ny: number) {
     }
 
     // 5. Definita positiva
-    console.log(cholesky(H) ? "✅ Positive definite" : "❌ Not positive definite");
+    console.log(Matrix.decomp.cholesky(H) ? "✅ Positive definite" : "❌ Not positive definite");
 }
 
 // ===============================

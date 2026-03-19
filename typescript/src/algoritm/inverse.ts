@@ -1,4 +1,4 @@
-import { Matrix } from "../core";
+import { Matrix } from "..";
 import { identity } from "../init";
 import { solve } from "../solver";
 
@@ -18,13 +18,13 @@ export function inverseDiagonal(A: Matrix): Matrix {
     }
    export function inverseOrthogonal(A: Matrix): Matrix {
         // In una matrice ortogonale, l'inversa è la trasposta
-        return A.transpose();
+        return A.t();
     }
 
    export function pseudoInverse(A: Matrix): Matrix {
-        const At = A.transpose();
+        const At = A.t();
         // (A^T * A)^-1 * A^T
-        return inverse(At.multiply(A)).multiply(At);
+        return inverse(At.mul(A)).mul(At);
     }
 
    export function inverseTriangular(A: Matrix, type: "upper" | "lower"): Matrix {
@@ -68,47 +68,21 @@ export function inverseDiagonal(A: Matrix): Matrix {
         const m = A.cols;
 
         // 1. Caso Rettangolare (Pseudo-inversa)
-        if (n !== m) {
+        if (!A.isSquare()) {
             console.log("SmartInverse: Matrice rettangolare rilevata. Uso Moore-Penrose.");
             return pseudoInverse(A);
         }
 
-        // 2. Controllo Diagonale / Scalare
-        let isDiag = true;
-        const firstDiag = A.get(0, 0);
-
-        for (let i = 1; i <= n; i++) {
-            for (let j = 1; j <= n; j++) {
-                const val = A.get(i - 1, j - 1);
-                if (i !== j && !Matrix.isZero(val)) {
-                    isDiag = false;
-                    break;
-                }
-            }
-            if (!isDiag) break;
-        }
-
-        if (isDiag) {
+        if (A.isDiagonal()) {
             console.log("SmartInverse: Matrice diagonale rilevata.");
             return inverseDiagonal(A);
         }
 
-        // 3. Controllo Triangolare
-        let isUpper = true;
-        let isLower = true;
-        for (let i = 1; i <= n; i++) {
-            for (let j = 1; j <= n; j++) {
-                const val = A.get(i - 1, j - 1);
-                if (i > j && !Matrix.isZero(val)) isUpper = false;
-                if (i < j && !Matrix.isZero(val)) isLower = false;
-            }
-        }
-
-        if (isUpper) {
+        if (A.isUpperTriangular()) {
             console.log("SmartInverse: Matrice triangolare superiore rilevata.");
             return inverseTriangular(A,"upper");
         }
-        if (isLower) {
+        if (A.isLowerTriangular()) {
             console.log("SmartInverse: Matrice triangolare inferiore rilevata.");
             return inverseTriangular(A,"lower");
         }
@@ -116,9 +90,9 @@ export function inverseDiagonal(A: Matrix): Matrix {
         // 4. Controllo Ortogonale (A^T * A = I)
         // Nota: Questo controllo costa O(n^3), ha senso solo se prevedi molte matrici di rotazione.
         // Se la matrice è grande, conviene saltarlo o farlo solo su richiesta.
-        if (A.isActuallyOrthogonal()) {
+        if (A.isOrthogonal()) {
             console.log("SmartInverse: Matrice ortogonale rilevata.");
-            return A.transpose();
+            return A.t();
         }
 
         // 5. Fallback: Metodo Diretto LUP

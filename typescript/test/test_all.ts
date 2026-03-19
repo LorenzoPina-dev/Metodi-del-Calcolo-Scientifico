@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as M from "../src/init";
-import { Matrix } from "../src/core";
+import { Matrix } from "../src";
 import { zeros } from "../src/init";
 
 /* ---------- LOAD JSON ---------- */

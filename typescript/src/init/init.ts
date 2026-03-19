@@ -1,4 +1,4 @@
-import { Matrix } from "../core";
+import { Matrix } from "..";
 
 export function zeros(rows: number, cols: number): Matrix {
     return new Matrix(rows, cols);
@@ -26,4 +26,3 @@ export function diagFromArray(arr: number[]): Matrix {
     for (let i = 0; i < n; i++) m.data[i * n + i] = arr[i];
     return m;
 }
-

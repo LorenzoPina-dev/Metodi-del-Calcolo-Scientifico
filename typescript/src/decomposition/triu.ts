@@ -1,4 +1,4 @@
-import { Matrix } from "../core";
+import { Matrix } from "..";
 import { zeros } from "../init";
 
 // Estrae la parte triangolare superiore della matrice con offset k

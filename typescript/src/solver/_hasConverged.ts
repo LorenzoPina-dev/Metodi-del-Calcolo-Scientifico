@@ -1,4 +1,4 @@
-import { Matrix } from "../core";
+import { Matrix } from "..";
 
 /**
  * Helper privato per verificare la convergenza, aggiornato con il conteggio da 1.
