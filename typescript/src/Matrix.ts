@@ -159,6 +159,10 @@ export class Matrix extends MatrixBase {
     isIdentity(tol?: number) { return propOps.isIdentity.call(this, tol); }
     isOrthogonal(tol?: number) { return propOps.isOrthogonal.call(this, tol); }
     isZeroMatrix(tol?: number) { return propOps.isZeroMatrix.call(this, tol); }
+
+    solve(b: Matrix, method: string = 'LUP'): Matrix {
+        return solver.solve.call(this, b, method);
+    }
     
     // -------- STATIC FACTORY --------
     static zeros = init.zeros;

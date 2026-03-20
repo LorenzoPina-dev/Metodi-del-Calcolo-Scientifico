@@ -22,8 +22,8 @@ export function randsvd(n: number): Matrix {
     let { Q: V } = qr(G2);
 
     let sigma = new Float64Array(n);
-    for (let i = 1; i <= n; i++) {
-        sigma[i - 1] = Math.pow(kappa, -(i - 1) / (n - 1));
+    for (let i = 0; i < n; i++) {
+        sigma[i] = Math.pow(kappa, -i / (n - 1));
     }
     
     // A = U * diag(sigma) * V^T
@@ -41,8 +41,8 @@ function gaussianRandom(): number {
 
 function generateNormalDistributionMatrix(rows: number, cols: number): Matrix {
     const matrix = zeros(rows, cols);
-    for (let i = 1; i <= rows; i++)
-        for (let j = 1; j <= cols; j++)
-            matrix.set(i - 1, j - 1, gaussianRandom());
+    for (let i = 0; i < rows; i++)
+        for (let j = 0; j < cols; j++)
+            matrix.set(i, j, gaussianRandom());
     return matrix;
 }

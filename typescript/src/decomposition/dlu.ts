@@ -13,17 +13,17 @@ export function decomposeDLU(A: Matrix): { D: Matrix; L: Matrix; U: Matrix } {
     const L = new Matrix(A.rows, A.cols);
     const U = new Matrix(A.rows, A.cols);
 
-    for (let i = 1; i <= A.rows; i++) {
-        for (let j = 1; j <= A.cols; j++) {
+    for (let i = 0; i < A.rows; i++) {
+        for (let j = 0; j < A.cols; j++) {
             // Adattamento dell'indice per la lettura in memoria
-            const val = A.get(i - 1, j - 1); 
+            const val = A.get(i, j); 
             
             if (i === j) {
-                D.set(i - 1, j - 1, val);
+                D.set(i, j, val);
             } else if (i > j) {
-                L.set(i - 1, j - 1, val);
+                L.set(i, j, val);
             } else {
-                U.set(i - 1, j - 1, val);
+                U.set(i, j, val);
             }
         }
     }

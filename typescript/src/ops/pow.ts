@@ -11,11 +11,11 @@ export function pow(this: Matrix, exp: number): Matrix {
         throw new Error("Only non-negative integer exponents are supported currently.");
     }
 
-    if (exp === 0) return (this.constructor as any).eye(this.rows);
+    if (exp === 0) return Matrix.identity(this.rows);
     if (exp === 1) return this.clone(); // Supponendo esista un metodo copy
 
-    let res = (this.constructor as any).eye(this.rows);
-    let base: Matrix = this;
+    let res = Matrix.identity(this.rows);
+    let base: Matrix = this.clone();
 
     while (exp > 0) {
         if (exp % 2 === 1) {

@@ -4,10 +4,10 @@ import { solve } from "../solver";
 
 export function inverseDiagonal(A: Matrix): Matrix {
         const out = new Matrix(A.rows, A.cols);
-        for (let i = 1; i <= A.rows; i++) {
-            const val = A.get(i - 1, i - 1);
+        for (let i = 0; i < A.rows; i++) {
+            const val = A.get(i, i);
             if (Matrix.isZero(val)) throw new Error("Matrice diagonale singolare.");
-            out.set(i - 1, i - 1, 1 / val);
+            out.set(i, i, 1 / val);
         }
         return out;
     }
@@ -32,27 +32,27 @@ export function inverseDiagonal(A: Matrix): Matrix {
         const out = new Matrix(n, n);
         const isUpper = type === "upper";
 
-        for (let j = 1; j <= n; j++) {
+        for (let j = 0; j < n; j++) {
             // Risolviamo A * x = e_j (colonna j dell'identità)
             if (isUpper) {
-                for (let i = n; i >= 1; i--) {
+                for (let i = n - 1; i >= 0; i--) {
                     let sum = 0;
-                    for (let k = i + 1; k <= n; k++) {
-                        sum += A.get(i - 1, k - 1) * out.get(k - 1, j - 1);
+                    for (let k = i + 1; k < n; k++) {
+                        sum += A.get(i, k) * out.get(k, j);
                     }
-                    const diag = A.get(i - 1, i - 1);
+                    const diag = A.get(i, i);
                     const b = (i === j ? 1 : 0);
-                    out.set(i - 1, j - 1, (b - sum) / diag);
+                    out.set(i, j, (b - sum) / diag);
                 }
             } else {
-                for (let i = 1; i <= n; i++) {
+                for (let i = 0; i < n; i++) {
                     let sum = 0;
-                    for (let k = 1; k <= i - 1; k++) {
-                        sum += A.get(i - 1, k - 1) * out.get(k - 1, j - 1);
+                    for (let k = 0; k < i; k++) {
+                        sum += A.get(i, k) * out.get(k, j);
                     }
-                    const diag = A.get(i - 1, i - 1);
+                    const diag = A.get(i, i);
                     const b = (i === j ? 1 : 0);
-                    out.set(i - 1, j - 1, (b - sum) / diag);
+                    out.set(i, j, (b - sum) / diag);
                 }
             }
         }

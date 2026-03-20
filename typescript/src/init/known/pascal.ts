@@ -27,9 +27,9 @@ function nchoosek(n: number, k: number): number {
     if (k === 0 || k === n) return 1;
     if (k > n - k) k = n - k;
     let result = 1;
-    for (let i = 1; i <= k; i++) {
-        result *= (n - i + 1);
-        result /= i;
+    for (let i = 0; i < k; i++) {
+        result *= (n - i);
+        result /= (i + 1);
     }
     return result;
 }

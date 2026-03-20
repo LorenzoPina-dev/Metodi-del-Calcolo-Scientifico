@@ -15,20 +15,19 @@ import { zeros } from "../init";
 export function binomial(n: number): Matrix {
     const matrix: Matrix = zeros(n, n);
 
-    for (let i = 1; i <= n; i++) {
-        for (let j = 1; j <= n; j++) {
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
             let sum = 0;
-            for (let k = 1; k <= n; k++) {
-                const term1 = combinations(i - 1, k - 1);
-                const term2 = combinations(n - i, j - k);
-                const sign = (k - 1) % 2 === 0 ? 1 : -1;
-                
+            
+            for (let k = 0; k < n; k++) {
+                const term1 = combinations(i, k);
+                const term2 = combinations(n - 1 - i, j - k);
+                const sign = k % 2 === 0 ? 1 : -1;
                 sum += term1 * term2 * sign;
             }
-            matrix.set(i - 1, j - 1, sum);
+            matrix.set(i, j, sum);
         }
     }
-
     return matrix;
 }
 

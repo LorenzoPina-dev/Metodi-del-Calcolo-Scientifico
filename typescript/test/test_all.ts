@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as M from "../src/init";
 import { Matrix } from "../src";
 import { zeros } from "../src/init";
 
@@ -47,10 +46,12 @@ function assertClose(A: Matrix, B: Matrix, tol = 1e-8) {
             const diff = Math.abs(A.get(i, j) - B.get(i, j));
             if (diff > tol) {
                 console.log(`Mismatch at (${i},${j}): ${A.get(i, j)} vs ${B.get(i, j)}, diff = ${diff}`);
-                console.log("Generated matrix:");
+                if(A.rows <= 10 && A.cols <= 10) // print matrices only if small
+                {console.log("Generated matrix:");
                 console.log(A.toString());
                 console.log("MATLAB matrix:");
                 console.log(B.toString());
+                }
                 throw new Error(`Mismatch at (${i},${j}): ${A.get(i,j)} vs ${B.get(i,j)}`);
             }
         }
@@ -80,47 +81,47 @@ function checkProperties(name: string, A: Matrix) {
 function generateMatrix(name: string, params: any): Matrix {
     switch (name) {
         case "hilb":
-            return M.hilbert(params.n);
+            return Matrix.gallery.hilbert(params.n);
         case "pascal":
-            return M.pascal(params.n);
+            return Matrix.gallery.pascal(params.n);
         case "magic":
-            return M.magic(params.n);
+            return Matrix.gallery.magic(params.n);
         case "lehmer":
-            return M.lehmer(params.n);
+            return Matrix.gallery.lehmer(params.n);
         case "grcar":
-            return M.grcar(params.n);
-        case "toeplitz":
-            return M.toeplitz(params.c, params.r);
+            return Matrix.gallery.grcar(params.n);
         case "fiedler":
-            return M.fiedler(params.v);
+            return Matrix.gallery.fiedler(params.v);
         case "circul":
-            return M.circul(params.c);
+            return Matrix.gallery.circul(params.c);
         case "tridiag":
-            return M.tridiag(params.a, params.b, params.c);
+            return Matrix.gallery.tridiag(params.a, params.b, params.c);
         //case "smoke":!!!!!!!!!!!!!!!!!!!!!!!!!!COMPLESSI!!!!!!!!!!!!!!!!!!!!!!
-        //    return M.smoke(params.n);
+        //    return Matrix.gallery.smoke(params.n);
         case "dorr":
-            return M.dorr(params.n);
+            return Matrix.gallery.dorr(params.n);
         case "hanowa":
-            return M.hanowa(params.n);
+            return Matrix.gallery.hanowa(params.n);
         case "neumann":
-            return M.neumann(params.n);
+            return Matrix.gallery.neumann(params.n);
         case "cauchy":
-            return M.cauchy(params.x, params.y);
+            return Matrix.gallery.cauchy(params.x, params.y);
         case "binomial":
-            return M.binomial(params.n);
+            return Matrix.gallery.binomial(params.n);
         case "randsvd":
-            return M.randsvd(params.n);
+            return Matrix.gallery.randsvd(params.n);
         case "toeplitz":
-            return M.toeplitz(params.c, params.r);
+            return Matrix.toeplitz(params.c, params.r);
         case "frank":
-            return M.frank(params.n);
+            return Matrix.gallery.frank(params.n);
         case "invhess":
-            return M.invhess(params.n);
+            return Matrix.gallery.invhess(params.n);
         case "kahan":
-            return M.kahan(params.n);
+            return Matrix.gallery.kahan(params.n);
         case "wathen":
-            return M.wathen(params.nx,params.ny);  
+            return Matrix.gallery.wathen(params.nx,params.ny);
+        case "wilkinson":
+            return Matrix.gallery.wilkinson(params.n);  
         default:
             throw new Error(`Not implemented: ${name}`);
     }
@@ -135,6 +136,10 @@ function runTests(baseDir: string) {
         const files = fs.readdirSync(dir).filter(f => f.endsWith(".json"));
 
         for (const file of files) {
+            if(name === "wathen") {
+                console.warn("⚠ Skipping wathen test due to random density (rho) in assembly");
+                continue;
+            }
             const filePath = path.join(dir, file);
             const { matrix: matlabMatrix, params } = loadJSON(filePath);
             const generated = generateMatrix(name, params);

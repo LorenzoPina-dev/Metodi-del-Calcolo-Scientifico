@@ -18,12 +18,12 @@ import { zeros } from "../init";
 export function smoke(n: number): Matrix {
     const H = zeros(n, n); 
 
-    for (let i = 1; i <= n; i++) {
-        const diagValue = Math.cos((2 * Math.PI * (i - 1)) / n);
-        H.set(i - 1, i - 1, diagValue);
+    for (let i = 0; i < n; i++) {
+        const diagValue = Math.cos((2 * Math.PI * i) / n);
+        H.set(i, i, diagValue);
 
         if (i < n) {
-            H.set(i - 1, i, 1.0);
+            H.set(i, i, 1.0);
         }
     }
     // Elemento circolante nell'angolo in basso a sinistra

@@ -17,7 +17,7 @@ describe('Matrix robust tests', () => {
 
     // ---------------- LU / LUP ----------------
     it('LU decomposition on square, rectangular, and singular matrices', () => {
-        const square = randomMatrix(5,5);
+        const square = randomMatrix(5,5).add(Matrix.diag(5,10)); // matrice diagonale dominante
         const {L, U} = Matrix.decomp.lu(square);
         const recon = L.mul(U);
         // ricostruzione
@@ -28,7 +28,7 @@ describe('Matrix robust tests', () => {
         }
 
         const singular = Matrix.zeros(4,4);
-        expect(() => Matrix.decomp.lu(singular)).toThrow(); // LU senza pivoting non funziona
+        expect(() => Matrix.decomp.lu(singular)).toThrow(Error); // LU senza pivoting non funziona
 
         // LUP con pivoting
         const { L: L2, U: U2, P } = Matrix.decomp.luPivotingTotal(square);
@@ -46,7 +46,8 @@ describe('Matrix robust tests', () => {
         const I = Matrix.identity(4);
         expect(I.det()).toBeCloseTo(1);
 
-        const randomMat = randomMatrix(5,5);
+        const randomMat = randomMatrix(5,5).add(Matrix.diag(5,2)); // matrice diagonale dominante
+        console.log("Random matrix:\n", randomMat.toString());
         const { U, swaps } = Matrix.decomp.lup(randomMat);
         let detViaLUP = (-1)**swaps;
         for (let k=0;k<U.rows;k++) detViaLUP *= U.get(k,k);
@@ -58,7 +59,7 @@ describe('Matrix robust tests', () => {
         const I = Matrix.identity(3);
         expect(I.isOrthogonal()).toBe(true);
 
-        const randomMat = randomMatrix(3,3);
+        const randomMat = randomMatrix(3,3).add(Matrix.diag(3,10)); // matrice diagonale dominante
         expect(randomMat.isOrthogonal()).toBe(false);
     });
 

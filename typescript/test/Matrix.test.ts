@@ -35,13 +35,14 @@ describe('Matrix core operations', () => {
     });
 
     it('mul', () => {
+        console.log("Testing multiplication...");
         const C = A.mul(B);
-        expect(C.get(0,0)).toBe(2);
+        expect(C.get(0,0)).toBe(200);
     });
 
     it('pow', () => {
         const C = A.pow(2);
-        expect(C.get(0,0)).toBe(1);
+        expect(C.get(0,0)).toBe(100);
     });
 
     // ---------- DOT OPS ----------

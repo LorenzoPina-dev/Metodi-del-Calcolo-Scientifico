@@ -36,3 +36,4 @@ export { randsvd } from "./randsvd";
 export { fiedler } from "./fiedler";
 export { hanowa } from "./hanowa";
 export { smoke } from "./smoke";
+export { wilkinson } from "./wilkinson";

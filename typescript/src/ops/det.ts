@@ -22,7 +22,6 @@ export function det(A: Matrix): number {
     if (n === 2) {
         return det2x2(A);
     }
-
     // 3. Matrici Diagonali o Triangolari (Prodotto della diagonale)
     if (A.isDiagonal() || A.isUpperTriangular() || A.isLowerTriangular()) {
         return detTriangular(A);
@@ -47,7 +46,7 @@ function det2x2(A: Matrix): number {
 function detTriangular(A: Matrix): number {
     let d = 1;
     const n = A.rows;
-    for (let i = 1; i <= n; i++) {
+    for (let i = 0; i < n; i++) {
         const val = A.get(i, i);
         if (val === 0) return 0; // Early exit: se c'è uno zero sulla diagonale, det = 0
         d *= val;
@@ -69,7 +68,7 @@ function detTriangular(A: Matrix): number {
     let d = Math.pow(-1, swaps);
     const n = U.rows;
 
-    for (let i = 1; i <= n; i++) {
+    for (let i = 0; i < n; i++) {
         const val = U.get(i, i);
         if (Math.abs(val) < 1e-15) return 0; // Matrice singolare o quasi singolare
         d *= val;
