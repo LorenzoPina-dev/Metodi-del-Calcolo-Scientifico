@@ -2,20 +2,35 @@ import { Matrix } from "..";
 import { identity } from "../init";
 
 export function lu(A: Matrix): { L: Matrix; U: Matrix } {
-    const N = A.rows;
-    if (N !== A.cols) throw new Error("Matrix must be square");
-    let A_old = A.clone(), L = identity(N);
-    for (let n = 0; n < N - 1; n++) {
-        const Mn = identity(N);
-        const Mn_inv = identity(N);
-        for (let i = n + 1; i < N; i++) {
-            if(A_old.get(n, n) < Number.EPSILON) throw new Error("Zero pivot encountered. Consider using pivoting.");
-            const val = A_old.get(i, n) / A_old.get(n, n);
-            Mn.set(i, n, -val);
-            Mn_inv.set(i, n, val);
+    const n = A.rows;
+    if (n !== A.cols) throw new Error("Matrix must be square");
+
+    const U = A.clone();
+    const L = Matrix.identity(n);
+
+    const EPS = 1e-12;
+
+    for (let k = 0; k < n; k++) {
+        const pivot = U.get(k, k);
+
+        // Controllo pivot
+        if (Math.abs(pivot) < EPS) {
+            throw new Error("Zero or near-zero pivot encountered. Use LUP instead.");
         }
-        A_old = Mn.mul(A_old);
-        L = L.mul(Mn_inv);
+
+        for (let i = k + 1; i < n; i++) {
+            const factor = U.get(i, k) / pivot;
+
+            // Salva il moltiplicatore in L
+            L.set(i, k, factor);
+
+            // Aggiorna riga di U
+            for (let j = k; j < n; j++) {
+                const value = U.get(i, j) - factor * U.get(k, j);
+                U.set(i, j, value);
+            }
+        }
     }
-    return { L, U: A_old };
+
+    return { L, U };
 }

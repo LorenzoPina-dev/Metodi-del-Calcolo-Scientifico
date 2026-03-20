@@ -31,7 +31,7 @@ describe('Matrix robust tests', () => {
         expect(() => Matrix.decomp.lu(singular)).toThrow(Error); // LU senza pivoting non funziona
 
         // LUP con pivoting
-        const { L: L2, U: U2, P } = Matrix.decomp.luPivotingTotal(square);
+        const { L: L2, U: U2, P } = Matrix.decomp.luPivoting(square);
         const PA = P.mul(square);
         const recon2 = L2.mul(U2);
         for (let i=0;i<5;i++){
@@ -105,8 +105,9 @@ describe('Matrix robust tests', () => {
         A.set(0,0,1);
         const H = A.flip(1);
         const V = A.flip(2);
-        expect(H.get(0,2)).toBe(1);
-        expect(V.get(1,0)).toBe(1);
+        
+        expect(V.get(0,2)).toBe(1);
+        expect(H.get(1,0)).toBe(1);
     });
 
     // ---------------- UNARY ----------------

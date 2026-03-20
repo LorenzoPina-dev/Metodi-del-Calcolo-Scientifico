@@ -20,7 +20,7 @@ export function solveJacobiMat(A:Matrix, b: Matrix, tol: number = Matrix.EPS, ma
 
     // Costruzione della matrice di iterazione T e del vettore C
     // T = - D^-1 * (L + U)
-    const T = D_inv.mul(LU).mul(-1);
+    const T = D_inv.mul(LU);
     // C = D^-1 * b
     const C = D_inv.mul(b);
 

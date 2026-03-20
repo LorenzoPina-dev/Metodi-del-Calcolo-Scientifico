@@ -30,8 +30,13 @@ import * as init from "./init/init";
 import { hankel, random, sparse, toeplitz, vander } from "./init";
 import * as propOps from "./ops/hasProperty";
 import { tril, triu } from "./decomposition";
+import { equal } from "./ops/equal";
 
 export class Matrix extends MatrixBase {
+
+    equals(B: Matrix, tol: number = Matrix.EPS): boolean {
+        return equal(this, B, tol);
+    }
 
     totalSum(): number {
         return addOps.totalSum.call(this);

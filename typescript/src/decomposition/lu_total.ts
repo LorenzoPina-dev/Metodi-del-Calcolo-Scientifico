@@ -1,28 +1,60 @@
 import { Matrix } from "..";
-import { identity } from "../init";
 
-export function luPivotingTotal(A: Matrix): { P: Matrix; L: Matrix; U: Matrix } {
+export function luPivoting(A: Matrix): { P: Matrix; L: Matrix; U: Matrix } {
     const n = A.rows;
     if (n !== A.cols) throw new Error("Matrix must be square");
-    let A_old = A.clone(), M = identity(n), P = identity(n);
-    for (let col = 0; col < n - 1; col++) {
-        let maxVal = 0, pivotRow = col;
-        for (let i = col; i < n; i++) {
-            const val = Math.abs(A_old.get(i, col));
-            if (val > maxVal) { maxVal = val; pivotRow = i; }
+
+    const U = A.clone();
+    const L = Matrix.identity(n);
+    const P = Matrix.identity(n);
+
+    const EPS = 1e-12;
+
+    for (let k = 0; k < n; k++) {
+        // Pivoting (parziale)
+        let pivotRow = k;
+        let max = Math.abs(U.get(k, k));
+
+        for (let i = k + 1; i < n; i++) {
+            const val = Math.abs(U.get(i, k));
+            if (val > max) {
+                max = val;
+                pivotRow = i;
+            }
         }
-        if (Matrix.isZero(maxVal)) continue;
-        if (pivotRow !== col) {
-            const Pn = identity(n);
-            Pn.set(col, col, 0); Pn.set(pivotRow, pivotRow, 0);
-            Pn.set(col, pivotRow, 1); Pn.set(pivotRow, col, 1);
-            P = Pn.mul(P); A_old = Pn.mul(A_old);
+
+        if (max < EPS) throw new Error("Matrix is singular or nearly singular");
+
+        // Swap righe
+        if (pivotRow !== k) {
+            swapRows.call(U, k, pivotRow);
+            swapRows.call(P, k, pivotRow);
+
+            // swap solo la parte già costruita di L
+            for (let j = 0; j < k; j++) {
+                const temp = L.get(k, j);
+                L.set(k, j, L.get(pivotRow, j));
+                L.set(pivotRow, j, temp);
+            }
         }
-        const Ltilden = identity(n);
-        for (let i = col + 1; i < n; i++) Ltilden.set(i, col, -A_old.get(i, col) / A_old.get(col, col));
-        M = Ltilden.mul(M); A_old = Ltilden.mul(A_old);
+
+        // Eliminazione
+        for (let i = k + 1; i < n; i++) {
+            const factor = U.get(i, k) / U.get(k, k);
+            L.set(i, k, factor);
+
+            for (let j = k; j < n; j++) {
+                U.set(i, j, U.get(i, j) - factor * U.get(k, j));
+            }
+        }
     }
-    const U = A_old;
-    const L = P.mul(M.inverse());
+
     return { P, L, U };
+}
+function swapRows(this: Matrix, i: number, j: number) {
+    for (let col = 0; col < this.cols; col++) {
+        const temp = this.get(i, col);
+        this.set(i, col, this.get(j, col));
+        this.set(j, col, temp);
+    }
 }
