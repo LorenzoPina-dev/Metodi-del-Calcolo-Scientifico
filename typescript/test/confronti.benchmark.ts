@@ -25,23 +25,33 @@ async function runUltimateBenchmark() {
         const scenarios = [
             { 
                 name: 'SPD', 
-                A: Matrix.random(N, N).mul(Matrix.random(N, N).t()).add(Matrix.identity(N).mul(0.1)),
-                solvers: ['Cholesky', 'LU', 'LUP', 'QR', 'Jacobi', 'Gauss-Seidel'] 
+                A: makeSPD(N),
+                solvers: ['CHOLESKY', 'LU', 'LUP', 'QR', 'JACOBI', 'GAUSS-SEIDEL'] 
             },
-            { 
-                name: 'Wilkinson', 
-                A: Matrix.gallery.wilkinson(N), 
-                solvers: ['LU', 'LUP', 'QR'] 
+            {
+                name: 'DiagonalDominant',
+                A: makeDiagonallyDominant(N),
+                solvers: ['JACOBI', 'GAUSS-SEIDEL', 'LUP']
             },
-            { 
-                name: 'Hanowa', 
-                A: (N % 2 === 0) ? Matrix.gallery.hanowa(N) : Matrix.gallery.hanowa(N + 1), 
-                solvers: ['LUP', 'QR'] 
+            {
+                name: 'General',
+                A: makeGeneralWellConditioned(N),
+                solvers: ['LU', 'LUP', 'QR']
             },
-            { 
-                name: 'Dorr', 
+            {
+                name: 'Wilkinson',
+                A: Matrix.gallery.wilkinson(N),
+                solvers: ['LUP', 'QR'] // LU escluso ❗
+            },
+            {
+                name: 'Hanowa',
+                A: (N % 2 === 0) ? Matrix.gallery.hanowa(N) : Matrix.gallery.hanowa(N + 1),
+                solvers: ['LUP', 'QR']
+            },
+            {
+                name: 'Dorr',
                 A: Matrix.gallery.dorr(N),
-                solvers: ['LUP', 'Jacobi', 'Gauss-Seidel']
+                solvers: ['LUP', 'JACOBI'] // GS può divergere
             }
         ];
 
@@ -68,6 +78,15 @@ function executeTest(N: number, type: string, method: string, approach: 'Statico
     
     let errorRel = 0;
     let status = "✅ OK";
+   /* console.log(`\n🔍 La matrice è: `);
+    if(A.isSymmetric()) console.log(`\n A è simmetrica`);
+    if(A.isUpperTriangular()) console.log(`\n A è triangolare superiore`);
+    if(A.isLowerTriangular()) console.log(`\n A è triangolare inferiore`);
+    if(A.isInvertible()) console.log(`\n A è invertibile`);
+    if(A.isOrthogonal()) console.log(`\n A è ortogonale`);
+    if(A.isDiagonallyDominant()) console.log(`\n A è matrice diagonale dominante`);*/
+
+
 
     try {
         const start = performance.now();
@@ -82,7 +101,18 @@ function executeTest(N: number, type: string, method: string, approach: 'Statico
         
         if (errorRel > 1e-5) status = "⚠️ Instabile";
         if (isNaN(errorRel)) status = "❌ Fallito";
-
+        if (!isMethodApplicable(A, method)) {
+            return {
+                Dim: N,
+                Tipo_Matrice: type,
+                Metodo: method,
+                Approccio: approach,
+                Tempo_ms: 0,
+                Memoria_MB: 0,
+                Residuo_Rel: "N/A",
+                Stato: "🚫 Non Applicabile"
+            };
+        }
         return {
             Dim: N,
             Tipo_Matrice: type,
@@ -94,6 +124,7 @@ function executeTest(N: number, type: string, method: string, approach: 'Statico
             Stato: status
         };
     } catch (e: any) {
+        console.error(`Errore in ${method}  per N=${N}:`, e.message);
         return {
             Dim: N, Tipo_Matrice: type, Metodo: method, Approccio: approach,
             Tempo_ms: 0, Memoria_MB: 0, Residuo_Rel: "N/A", Stato: "🚫 Non Imp."
@@ -117,5 +148,51 @@ function normInfMat(m: Matrix) {
     }
     return max;
 }
+function isMethodApplicable(A: Matrix, method: string): boolean {
+    switch (method.toUpperCase()) {
+        case 'CHOLESKY':
+            return A.isSymmetric() && A.isPositiveDefinite();
+
+        case 'LU':
+            return A.isSquare();
+
+        case 'LUP':
+            return A.isSquare();
+
+        case 'QR':
+            return true;
+
+        case 'JACOBI':
+        case 'GAUSS-SEIDEL':
+            return A.isDiagonallyDominant() || A.isPositiveDefinite();
+
+        default:
+            return true;
+    }
+}
 
 runUltimateBenchmark();
+
+function makeSPD(N: number): Matrix {
+    const M = Matrix.random(N, N);
+    const A = M.t().mul(M);
+    return A.add(Matrix.identity(N).mul(N * 1e-3));
+}
+
+function makeDiagonallyDominant(N: number): Matrix {
+    const A = Matrix.random(N, N);
+
+    for (let i = 0; i < N; i++) {
+        let rowSum = 0;
+        for (let j = 0; j < N; j++) {
+            if (i !== j) rowSum += Math.abs(A.get(i, j));
+        }
+        A.set(i, i, rowSum + 1); // forza dominanza
+    }
+
+    return A;
+}
+
+function makeGeneralWellConditioned(N: number): Matrix {
+    return Matrix.random(N, N).add(Matrix.identity(N).mul(0.5));
+}

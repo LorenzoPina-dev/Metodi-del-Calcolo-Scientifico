@@ -34,6 +34,5 @@ export function solveGaussSeidelMat(A:Matrix, b: Matrix, tol: number = Matrix.EP
         x = xNext;
     }
 
-    console.warn("Gauss-Seidel (Matriciale): Raggiunto il numero massimo di iterazioni.");
     return x;
 }

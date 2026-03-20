@@ -160,6 +160,16 @@ export class Matrix extends MatrixBase {
     isOrthogonal(tol?: number) { return propOps.isOrthogonal.call(this, tol); }
     isZeroMatrix(tol?: number) { return propOps.isZeroMatrix.call(this, tol); }
 
+    // -------- ADVANCED PROPERTIES --------
+    isInvertible(tol?: number) { return propOps.isInvertible.call(this, tol); }
+    isSingular(tol?: number) { return propOps.isSingular.call(this, tol); }
+    isPositiveDefinite() { return propOps.isPositiveDefinite.call(this); }
+    isPositiveSemiDefinite(tol?: number) { return propOps.isPositiveSemiDefinite.call(this, tol); }
+    isDiagonallyDominant() { return propOps.isDiagonallyDominant.call(this); }
+    hasZeroTrace(tol?: number) { return propOps.hasZeroTrace.call(this, tol); }
+    hasFiniteValues() { return propOps.hasFiniteValues.call(this); }
+    isStochastic(tol?: number) { return propOps.isStochastic.call(this, tol); }
+
     solve(b: Matrix, method: string = 'LUP'): Matrix {
         return solver.solve.call(this, b, method);
     }

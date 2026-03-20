@@ -35,6 +35,5 @@ export function solveJacobiMat(A:Matrix, b: Matrix, tol: number = Matrix.EPS, ma
         x = xNext; // Nessun bisogno di clone(), l'assegnazione va bene perché T.multiply crea una nuova matrice
     }
     
-    console.warn("Jacobi (Matriciale): Raggiunto il numero massimo di iterazioni.");
     return x;
 }

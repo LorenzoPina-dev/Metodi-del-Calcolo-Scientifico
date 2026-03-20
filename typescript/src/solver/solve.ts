@@ -1,8 +1,15 @@
 import { Matrix } from "..";
 
-export function solve(b: Matrix, method: string = 'LUP'): Matrix {
+export function solve(this: Matrix, b: Matrix, method: string = 'LUP'): Matrix {
     switch (method.toUpperCase()) {
-        
+        case 'LU':{
+            // 1. Decomposizione: A = L * U
+            const { L, U } = Matrix.decomp.lu(this);
+            // 2. Risoluzione L * y = b
+            const y = Matrix.solver.solveLowerTriangular(L, b);
+            // 3. Risoluzione U * x = y
+            return Matrix.solver.solveUpperTriangular(U, y);
+        }
         case 'LUP': {
             // 1. Decomposizione: A = P^T * L * U
             const { L, U, P } = Matrix.decomp.lup(this);
@@ -13,7 +20,6 @@ export function solve(b: Matrix, method: string = 'LUP'): Matrix {
             // 4. Risoluzione U * x = y
             return Matrix.solver.solveUpperTriangular(U, y);
         }
-
         case 'CHOLESKY': {
             // 1. Decomposizione: A = L * L^T
             const {L} = Matrix.decomp.cholesky(this);
@@ -36,7 +42,9 @@ export function solve(b: Matrix, method: string = 'LUP'): Matrix {
         case 'JACOBI':
             // Jacobi è iterativo, non usa solveTriangular ma un ciclo
             return Matrix.solver.solveJacobiMat(this, b);
-
+        case 'GAUSS-SEIDEL':
+            // Gauss-Seidel è iterativo, non usa solveTriangular ma un ciclo
+            return Matrix.solver.solveGaussSeidelMat(this, b);
         default:
             throw new Error(`Metodo ${method} non riconosciuto.`);
     }

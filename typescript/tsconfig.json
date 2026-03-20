@@ -1,9 +1,6 @@
-
 {
-  "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "target": "ESNext"
+  "type": "module",
+  "scripts": {
+    "test": "vitest"
   }
 }
