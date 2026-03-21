@@ -1,6 +1,47 @@
 {
-  "type": "module",
-  "scripts": {
-    "test": "vitest"
-  }
+  "compilerOptions": {
+    /* Target moderno (necessario per BigInt, **, ecc.) */
+    "target": "ES2020",
+
+    /* Moduli per Node moderno */
+    "module": "ESNext",
+    "moduleResolution": "Node",
+
+    /* Librerie disponibili */
+    "lib": ["ES2020"],
+
+    /* Output */
+    "outDir": "./dist",
+    "rootDir": "./src",
+
+    /* Strict mode (fondamentale per evitare bug tipo quelli che hai avuto) */
+    "strict": true,
+
+    /* Migliora l'inferenza di this */
+    "noImplicitThis": true,
+
+    /* Evita undefined silenziosi */
+    "strictNullChecks": true,
+
+    /* Interoperabilità */
+    "esModuleInterop": true,
+
+    /* Velocità compilazione */
+    "skipLibCheck": true,
+
+    /* Debug */
+    "sourceMap": true,
+
+    /* Permette import senza estensione .js in TS */
+    "resolveJsonModule": true,
+
+    /* Consigliato per Node moderno */
+    "forceConsistentCasingInFileNames": true,
+
+    /* Non emettere se errore */
+    "noEmitOnError": true
+  },
+
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }

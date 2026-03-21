@@ -21,9 +21,9 @@ export function randsvd(n: number): Matrix {
     let { Q: U } = qr(G1);
     let { Q: V } = qr(G2);
 
-    let sigma = new Array<Float64M>(n);
+    let sigma = new Float64Array(n);
     for (let i = 0; i < n; i++) {
-        sigma[i] =new Float64M( Math.pow(kappa, -i / (n - 1)));
+        sigma[i] =Math.pow(kappa, -i / (n - 1));
     }
     // A = U * diag(sigma) * V^T
     const SigmaMat = Matrix.diagFromArray(sigma); // Assumendo costruttore per diagonale

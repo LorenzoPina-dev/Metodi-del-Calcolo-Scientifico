@@ -9,17 +9,18 @@ export * from "./triu";
 export * from "./dlu";
 
 // ---- Alias backward-compatible ----
-// luPivoting: come lup ma restituisce P come Matrix (permutation matrix)
+// luPivoting: come lup ma restituisce P come Matrix (matrice di permutazione)
 import { lup } from "./lup";
 import { INumeric } from "../type";
-
 import { Matrix } from "..";
 
-export function luPivoting<T extends INumeric<T>>(A: Matrix<T> ): { L: Matrix<T>; U: Matrix<T>; P: Matrix<T>; swaps: number } {
-    const { L, U, P: perm, swaps } = lup<T>(A as any);
+export function luPivoting<T extends INumeric<T>>(
+    A: Matrix<T>
+): { L: Matrix<T>; U: Matrix<T>; P: Matrix<T>; swaps: number } {
+    const { L, U, P: perm, swaps } = lup(A);
     const n = A.rows;
-    // Costruisce la matrice di permutazione esplicita
     const Pm = A.like(n, n);
-    for (let i = 0; i < n; i++) Pm.set(i, perm[i], A.one);
+    const pd = (Pm as any).data;
+    for (let i = 0; i < n; i++) pd[i * n + perm[i]] = A.one;
     return { L, U, P: Pm, swaps };
 }

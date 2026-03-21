@@ -1,35 +1,39 @@
 // solver/jacobi.ts
+//
+// Forma element-wise — O(n²) per iterazione anziché O(n³) nella forma matriciale.
+// Nessuna costruzione di T o C — zero allocazioni matriciali in setup.
+//
 import { Matrix } from "..";
 import { INumeric } from "../type";
-import { decomposeDLU } from "../decomposition/dlu";
-import { inverseDiagonal } from "../algoritm/inverse";
 import { _hasConverged } from "./_hasConverged";
 
-/**
- * Risolve A*x = b con il metodo di Jacobi (forma matriciale).
- * Formula: x_{k+1} = D^{-1} * (b - (L+U) * x_k)
- */
 export function solveJacobiMat<T extends INumeric<T>>(
     A: Matrix<T>,
     b: Matrix<T>,
     tol: number = 1e-10,
     maxIter: number = 1000
 ): Matrix<T> {
-    if (A.rows !== A.cols) throw new Error("solveJacobiMat: matrice non quadrata.");
+    const n = A.rows;
+    if (n !== A.cols) throw new Error("solveJacobiMat: matrice non quadrata.");
 
-    const { D, L, U } = decomposeDLU(A);
-    const D_inv = inverseDiagonal(D);
-    const LU    = L.add(U);
+    const ad = A.data;
+    const bd = b.data;
+    let x = A.like(n, 1);
+    const xd = x.data;
 
-    // T = -D^{-1} * (L+U),  C = D^{-1} * b
-    const T = D_inv.mul(LU).mul(-1);
-    const C = D_inv.mul(b);
+    for (let iter = 0; iter < maxIter; iter++) {
+        const xNext = A.like(n, 1);
+        const nd = xNext.data;
 
-    let x     = A.like(A.rows, 1);
-    let xNext = A.like(A.rows, 1);
+        for (let i = 0; i < n; i++) {
+            const off = i * n;
+            let s = bd[i];
+            for (let j = 0; j < n; j++) {
+                if (j !== i) s = s.subtract(ad[off + j].multiply(xd[j]));
+            }
+            nd[i] = s.divide(ad[off + i]);
+        }
 
-    for (let k = 0; k < maxIter; k++) {
-        xNext = T.mul(x).add(C);
         if (_hasConverged(x, xNext, tol)) return xNext;
         x = xNext;
     }

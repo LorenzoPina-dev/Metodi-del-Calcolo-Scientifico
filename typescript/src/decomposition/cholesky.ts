@@ -3,8 +3,8 @@ import { Matrix } from "..";
 import { INumeric } from "../type";
 
 /**
- * Decomposizione di Cholesky: A = L * L^T.
- * Richiede A simmetrica e definita positiva.
+ * Decomposizione di Cholesky: A = L * L^T  (solo triangolare inferiore).
+ * Accesso diretto a data[] — elimina il sovraccarico di get/set per matrici grandi.
  */
 export function cholesky<T extends INumeric<T>>(A: Matrix<T>): { L: Matrix<T> } {
     if (A.rows !== A.cols) throw new Error("cholesky: matrice non quadrata.");
@@ -12,28 +12,29 @@ export function cholesky<T extends INumeric<T>>(A: Matrix<T>): { L: Matrix<T> } 
 
     const N = A.rows;
     const L = A.like(N, N);
+    const ad = A.data, ld = L.data;
 
     for (let j = 0; j < N; j++) {
-        // Elemento diagonale: L[j,j] = sqrt( A[j,j] - sum(L[j,k]^2, k<j) )
+        // L[j,j] = sqrt( A[j,j] - Σ L[j,k]² )
         let diagSum = A.zero;
         for (let k = 0; k < j; k++) {
-            diagSum = diagSum.add(L.get(j, k).multiply(L.get(j, k)));
+            const ljk = ld[j * N + k];
+            diagSum = diagSum.add(ljk.multiply(ljk));
         }
-        const d = A.get(j, j).subtract(diagSum);
-
-        // Verifica definita positiva
+        const d = ad[j * N + j].subtract(diagSum);
         if (d.negate().greaterThan(A.zero)) {
             throw new Error("cholesky: la matrice non è definita positiva.");
         }
-        L.set(j, j, d.sqrt());
+        const ljj = d.sqrt();
+        ld[j * N + j] = ljj;
 
-        // Colonna j, righe sotto la diagonale
+        // Colonna j, righe i > j
         for (let i = j + 1; i < N; i++) {
             let offSum = A.zero;
             for (let k = 0; k < j; k++) {
-                offSum = offSum.add(L.get(i, k).multiply(L.get(j, k)));
+                offSum = offSum.add(ld[i * N + k].multiply(ld[j * N + k]));
             }
-            L.set(i, j, A.get(i, j).subtract(offSum).divide(L.get(j, j)));
+            ld[i * N + j] = ad[i * N + j].subtract(offSum).divide(ljj);
         }
     }
 

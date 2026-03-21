@@ -1,48 +1,60 @@
 // decomposition/qr.ts
+//
+// Gram-Schmidt Modificato (MGS) con prodotto interno hermitiano corretto.
+//
+// Prodotto interno: <u, v> = Σ conj(u_i) * v_i
+//   → per tipi reali (Float64M, Rational): conj(x) = x → uguale al classico
+//   → per Complex: usa il vero prodotto interno hermitiano
+//
+// Questo garantisce che Q^H * Q = I sia valido sia per matrici reali che complesse.
+//
 import { Matrix } from "..";
 import { INumeric } from "../type";
 
-/**
- * Decomposizione QR tramite Gram-Schmidt classico.
- * A = Q * R, con Q ortogonale (m×n) e R triangolare superiore (n×n).
- */
 export function qr<T extends INumeric<T>>(A: Matrix<T>): { Q: Matrix<T>; R: Matrix<T> } {
-    const m = A.rows;
-    const n = A.cols;
+    const m = A.rows, n = A.cols;
 
     const Q = A.like(m, n);
     const R = A.like(n, n);
-    const W = A.clone();   // copia di lavoro (verrà modificata da Gram-Schmidt)
+    const W = A.clone();  // copia di lavoro modificata in-place da MGS
+
+    const qd = Q.data, rd = R.data, wd = W.data;
 
     for (let k = 0; k < n; k++) {
-        // --- Norma della colonna k ---
+
+        // ---- Norma² hermitiana della colonna k: <W_k, W_k> = Σ conj(w_i)*w_i = Σ |w_i|² ----
         let normSq = A.zero;
         for (let i = 0; i < m; i++) {
-            const v = W.get(i, k);
-            normSq = normSq.add(v.multiply(v));
+            const v = wd[i * n + k];
+            // conj(v) * v = |v|²  (reale e positivo per qualsiasi T)
+            normSq = normSq.add(v.conjugate().multiply(v));
         }
-        const normK = normSq.sqrt();
+
+        const normK = normSq.sqrt();  // ||W_k|| reale (sqrt di valore reale ≥ 0)
 
         if (A.isZero(normK)) {
-            throw new Error("qr: colonne linearmente dipendenti alla colonna " + k + ".");
+            throw new Error(`qr: colonne linearmente dipendenti alla colonna ${k}.`);
         }
 
-        R.set(k, k, normK);
+        rd[k * n + k] = normK;
 
-        // q_k = a_k / ||a_k||
+        // ---- q_k = W_k / ||W_k|| ----
         for (let i = 0; i < m; i++) {
-            Q.set(i, k, W.get(i, k).divide(normK));
+            qd[i * n + k] = wd[i * n + k].divide(normK);
         }
 
-        // Proiezioni sulle colonne successive: a_j -= (q_k · a_j) * q_k
+        // ---- MGS: aggiorna le colonne successive di W ----
+        // r_{kj} = <q_k, W_j> = Σ conj(q_k_i) * W_j_i
+        // W_j  -= r_{kj} * q_k
         for (let j = k + 1; j < n; j++) {
             let dot = A.zero;
             for (let i = 0; i < m; i++) {
-                dot = dot.add(Q.get(i, k).multiply(W.get(i, j)));
+                // conj(q_k_i) * w_j_i  →  prodotto interno hermitiano
+                dot = dot.add(qd[i * n + k].conjugate().multiply(wd[i * n + j]));
             }
-            R.set(k, j, dot);
+            rd[k * n + j] = dot;
             for (let i = 0; i < m; i++) {
-                W.set(i, j, W.get(i, j).subtract(dot.multiply(Q.get(i, k))));
+                wd[i * n + j] = wd[i * n + j].subtract(dot.multiply(qd[i * n + k]));
             }
         }
     }

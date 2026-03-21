@@ -2,111 +2,124 @@
 import { Matrix } from "..";
 import { INumeric } from "../type";
 
-// ---- MAX ----
-export function max<T extends INumeric<T>>(
-    this: Matrix<T>,
-    dim: 1 | 2 = 1
-): { value: Matrix<T>; index: Int32Array } {
-    return dim === 1
-        ? columnReduction(this, (a, b) => a.greaterThan(b))
-        : rowReduction(this, (a, b) => a.greaterThan(b));
+export function max<T extends INumeric<T>>(this: Matrix<T>, dim: 1 | 2 = 1): { value: Matrix<T>; index: Int32Array } {
+    return dim === 1 ? _colReduce(this, true) : _rowReduce(this, true);
 }
 
-// ---- MIN ----
-export function min<T extends INumeric<T>>(
-    this: Matrix<T>,
-    dim: 1 | 2 = 1
-): { value: Matrix<T>; index: Int32Array } {
-    return dim === 1
-        ? columnReduction(this, (a, b) => a.lessThan(b))
-        : rowReduction(this, (a, b) => a.lessThan(b));
+export function min<T extends INumeric<T>>(this: Matrix<T>, dim: 1 | 2 = 1): { value: Matrix<T>; index: Int32Array } {
+    return dim === 1 ? _colReduce(this, false) : _rowReduce(this, false);
 }
 
-// ---- SUM ----
 export function sum<T extends INumeric<T>>(this: Matrix<T>, dim: 1 | 2 = 1): Matrix<T> {
-    return dim === 1 ? sumColumns(this) : sumRows(this);
+    return dim === 1 ? _sumCols(this) : _sumRows(this);
 }
 
-// ---- MEAN ----
 export function mean<T extends INumeric<T>>(this: Matrix<T>, dim: 1 | 2 = 1): Matrix<T> {
     const s = sum.call(this, dim);
-    const divisor = this.zero.fromNumber(dim === 1 ? this.rows : this.cols);
-    for (let i = 0; i < s.data.length; i++) s.data[i] = s.data[i].divide(divisor);
+    const div = this.zero.fromNumber(dim === 1 ? this.rows : this.cols);
+    const d = s.data, len = d.length;
+    for (let i = 0; i < len; i++) d[i] = d[i].divide(div);
     return s;
 }
 
-// ==================== PRIVATI ====================
+// ==================== PRIVATE ====================
 
-function columnReduction<T extends INumeric<T>>(
-    A: Matrix<T>,
-    isBetter: (candidate: T, current: T) => boolean
+function _colReduce<T extends INumeric<T>>(
+    A: Matrix<T>, wantMax: boolean
 ): { value: Matrix<T>; index: Int32Array } {
-    const { rows: R, cols: C } = A;
+    const R = A.rows, C = A.cols;
     const vOut = A.like(1, C);
     const iOut = new Int32Array(C);
+    const ad = A.data, od = vOut.data;
 
-    // Inizializza con il primo elemento di ogni colonna
-    for (let j = 0; j < C; j++) {
-        vOut.data[j] = A.data[j]; // riga 0
-        iOut[j] = 1;
-    }
+    // Inizializza con la riga 0
+    for (let j = 0; j < C; j++) { od[j] = ad[j]; iOut[j] = 1; }
 
     for (let i = 1; i < R; i++) {
         const off = i * C;
         for (let j = 0; j < C; j++) {
-            if (isBetter(A.data[off + j], vOut.data[j])) {
-                vOut.data[j] = A.data[off + j];
-                iOut[j] = i + 1; // 1-based
-            }
+            const v = ad[off + j];
+            const better = wantMax ? v.greaterThan(od[j]) : v.lessThan(od[j]);
+            if (better) { od[j] = v; iOut[j] = i + 1; }
         }
     }
     return { value: vOut, index: iOut };
 }
 
-function rowReduction<T extends INumeric<T>>(
-    A: Matrix<T>,
-    isBetter: (candidate: T, current: T) => boolean
+function _rowReduce<T extends INumeric<T>>(
+    A: Matrix<T>, wantMax: boolean
 ): { value: Matrix<T>; index: Int32Array } {
-    const { rows: R, cols: C } = A;
+    const R = A.rows, C = A.cols;
     const vOut = A.like(R, 1);
     const iOut = new Int32Array(R);
+    const ad = A.data, od = vOut.data;
 
     for (let i = 0; i < R; i++) {
         const off = i * C;
-        let best = A.data[off];
-        let bestJ = 1;
+        let best = ad[off], bestJ = 1;
         for (let j = 1; j < C; j++) {
-            if (isBetter(A.data[off + j], best)) {
-                best = A.data[off + j];
-                bestJ = j + 1; // 1-based
-            }
+            const v = ad[off + j];
+            const better = wantMax ? v.greaterThan(best) : v.lessThan(best);
+            if (better) { best = v; bestJ = j + 1; }
         }
-        vOut.data[i] = best;
-        iOut[i] = bestJ;
+        od[i] = best; iOut[i] = bestJ;
     }
     return { value: vOut, index: iOut };
 }
 
-function sumColumns<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
-    const out = A.like(1, A.cols);
-    const { rows, cols } = A;
-    for (let i = 0; i < rows; i++) {
-        const off = i * cols;
-        for (let j = 0; j < cols; j++) {
-            out.data[j] = out.data[j].add(A.data[off + j]);
+function _sumCols<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
+    const R = A.rows, C = A.cols;
+    const out = A.like(1, C);
+    const ad = A.data, od = out.data;
+
+    if (A.isFloat64) {
+        // Accumula direttamente i valori float senza allocare Float64M intermedi
+        const acc = new Float64Array(C);
+        for (let i = 0; i < R; i++) {
+            const off = i * C;
+            let j = 0;
+            for (; j <= C - 4; j += 4) {
+                acc[j]     += (ad[off + j]     as any).value;
+                acc[j + 1] += (ad[off + j + 1] as any).value;
+                acc[j + 2] += (ad[off + j + 2] as any).value;
+                acc[j + 3] += (ad[off + j + 3] as any).value;
+            }
+            for (; j < C; j++) acc[j] += (ad[off + j] as any).value;
+        }
+        for (let j = 0; j < C; j++) od[j] = A.zero.fromNumber(acc[j]);
+    } else {
+        for (let i = 0; i < R; i++) {
+            const off = i * C;
+            for (let j = 0; j < C; j++) od[j] = od[j].add(ad[off + j]);
         }
     }
     return out;
 }
 
-function sumRows<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
-    const out = A.like(A.rows, 1);
-    const { rows, cols } = A;
-    for (let i = 0; i < rows; i++) {
-        const off = i * cols;
-        let s = A.zero;
-        for (let j = 0; j < cols; j++) s = s.add(A.data[off + j]);
-        out.data[i] = s;
+function _sumRows<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
+    const R = A.rows, C = A.cols;
+    const out = A.like(R, 1);
+    const ad = A.data, od = out.data;
+
+    if (A.isFloat64) {
+        for (let i = 0; i < R; i++) {
+            const off = i * C;
+            let s = 0;
+            let j = 0;
+            for (; j <= C - 4; j += 4) {
+                s += (ad[off + j] as any).value + (ad[off + j + 1] as any).value
+                   + (ad[off + j + 2] as any).value + (ad[off + j + 3] as any).value;
+            }
+            for (; j < C; j++) s += (ad[off + j] as any).value;
+            od[i] = A.zero.fromNumber(s);
+        }
+    } else {
+        for (let i = 0; i < R; i++) {
+            const off = i * C;
+            let s = A.zero;
+            for (let j = 0; j < C; j++) s = s.add(ad[off + j]);
+            od[i] = s;
+        }
     }
     return out;
 }

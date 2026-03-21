@@ -2,27 +2,23 @@
 import { Matrix } from "..";
 import { INumeric } from "../type";
 
-/**
- * Scompone A = D + L_strict + U_strict (forma additiva).
- * D:  diagonale
- * L:  triangolare inferiore stretta (off-diagonale inferiore)
- * U:  triangolare superiore stretta (off-diagonale superiore)
- */
 export function decomposeDLU<T extends INumeric<T>>(
     A: Matrix<T>
 ): { D: Matrix<T>; L: Matrix<T>; U: Matrix<T> } {
-    if (A.rows !== A.cols) throw new Error("decomposeDLU: la matrice deve essere quadrata.");
+    if (A.rows !== A.cols) throw new Error("decomposeDLU: matrice non quadrata.");
+    const n = A.rows;
+    const D = A.like(n, n);
+    const L = A.like(n, n);
+    const U = A.like(n, n);
+    const ad = A.data, dd = D.data, ld = L.data, ud = U.data;
 
-    const D = A.like(A.rows, A.cols);
-    const L = A.like(A.rows, A.cols);
-    const U = A.like(A.rows, A.cols);
-
-    for (let i = 0; i < A.rows; i++) {
-        for (let j = 0; j < A.cols; j++) {
-            const v = A.get(i, j);
-            if (i === j)      D.set(i, j, v);
-            else if (i > j)   L.set(i, j, v);
-            else              U.set(i, j, v);
+    for (let i = 0; i < n; i++) {
+        const off = i * n;
+        for (let j = 0; j < n; j++) {
+            const v = ad[off + j];
+            if (i === j)    dd[off + j] = v;
+            else if (i > j) ld[off + j] = v;
+            else            ud[off + j] = v;
         }
     }
     return { D, L, U };

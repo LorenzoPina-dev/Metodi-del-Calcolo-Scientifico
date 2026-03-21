@@ -2,110 +2,141 @@
 import { INumeric } from "./interface";
 
 export class Rational implements INumeric<Rational> {
+    readonly kind = "rational" as const;
+
     public readonly num: bigint;
     public readonly den: bigint;
 
-    static readonly zero: Rational = new Rational(0);
-    static readonly one: Rational  = new Rational(1);
+    static readonly zero: Rational = new Rational(0n, 1n, true);
+    static readonly one:  Rational = new Rational(1n, 1n, true);
 
-    constructor(num: bigint | number, den: bigint | number = 1) {
-        let n = BigInt(typeof num === "number" ? Math.trunc(num) : num);
-        let d = BigInt(typeof den === "number" ? Math.trunc(den) : den);
+    constructor(num: bigint | number, den: bigint | number = 1n, _reduced = false) {
+        let n = typeof num === "bigint" ? num : BigInt(Math.trunc(num as number));
+        let d = typeof den === "bigint" ? den : BigInt(Math.trunc(den as number));
 
-        if (d === BigInt(0)) throw new Error("Rational: denominatore zero.");
-        if (d < BigInt(0)) { n = -n; d = -d; }
-
-        const g = Rational.gcd(n < BigInt(0) ? -n : n, d);
-        this.num = n / g;
-        this.den = d / g;
+        if (d === 0n) throw new Error("Rational: denominatore zero.");
+        if (!_reduced) {
+            if (d < 0n) { n = -n; d = -d; }
+            const g = Rational.gcd(n < 0n ? -n : n, d);
+            if (g > 1n) { n = n / g; d = d / g; }
+        }
+        this.num = n;
+        this.den = d;
     }
 
-    // ---- GCD ----
-    private static gcd(a: bigint, b: bigint): bigint {
-        while (b > BigInt(0)) { [a, b] = [b, a % b]; }
-        return a;
+    // ---- GCD binario di Lehmer ----
+    static gcd(a: bigint, b: bigint): bigint {
+        if (a === 0n) return b;
+        if (b === 0n) return a;
+        let shift = 0n;
+        while (((a | b) & 1n) === 0n) { a >>= 1n; b >>= 1n; shift++; }
+        while ((a & 1n) === 0n) a >>= 1n;
+        while (b !== 0n) {
+            while ((b & 1n) === 0n) b >>= 1n;
+            if (a > b) { const t = a; a = b; b = t; }
+            b -= a;
+        }
+        return a << shift;
+    }
+
+    private static reduced(n: bigint, d: bigint): Rational {
+        return new Rational(n, d, true);
     }
 
     // ---- Factory ----
     fromNumber(n: number): Rational {
         if (!Number.isFinite(n)) throw new Error("Rational.fromNumber: valore non finito.");
-        if (Number.isInteger(n)) return new Rational(BigInt(n));
-        // Approssima con denominatore 10^15 per mantenere la precisione float
-        const SCALE = 1_000_000_000_000_000;
+        if (Number.isInteger(n)) return Rational.reduced(BigInt(n), 1n);
+        const SCALE = 1_000_000_000_000_000n;
         const rounded = BigInt(Math.round(n * 1e15));
-        return new Rational(rounded, SCALE);
+        const g = Rational.gcd(rounded < 0n ? -rounded : rounded, SCALE);
+        return Rational.reduced(rounded / g, SCALE / g);
     }
 
-    toNumber(): number {
-        return Number(this.num) / Number(this.den);
+    toNumber(): number { return Number(this.num) / Number(this.den); }
+
+    // ---- Aritmetica con cross-cancellation ----
+
+    negate(): Rational { return Rational.reduced(-this.num, this.den); }
+
+    add(o: Rational): Rational {
+        if (this.den === o.den) {
+            const n = this.num + o.num;
+            if (n === 0n) return Rational.zero;
+            const g = Rational.gcd(n < 0n ? -n : n, this.den);
+            return Rational.reduced(n / g, this.den / g);
+        }
+        const g   = Rational.gcd(this.den, o.den);
+        const den = this.den / g * o.den;
+        const n   = this.num * (o.den / g) + o.num * (this.den / g);
+        if (n === 0n) return Rational.zero;
+        const g2 = Rational.gcd(n < 0n ? -n : n, g);
+        return Rational.reduced(n / g2, den / g2);
     }
 
-    // ---- Aritmetica ----
-    negate(): Rational {
-        return new Rational(-this.num, this.den);
+    subtract(o: Rational): Rational {
+        if (this.den === o.den) {
+            const n = this.num - o.num;
+            if (n === 0n) return Rational.zero;
+            const g = Rational.gcd(n < 0n ? -n : n, this.den);
+            return Rational.reduced(n / g, this.den / g);
+        }
+        const g   = Rational.gcd(this.den, o.den);
+        const den = this.den / g * o.den;
+        const n   = this.num * (o.den / g) - o.num * (this.den / g);
+        if (n === 0n) return Rational.zero;
+        const g2 = Rational.gcd(n < 0n ? -n : n, g);
+        return Rational.reduced(n / g2, den / g2);
     }
-    add(other: Rational): Rational {
-        return new Rational(
-            this.num * other.den + other.num * this.den,
-            this.den * other.den
+
+    multiply(o: Rational): Rational {
+        if (this.num === 0n || o.num === 0n) return Rational.zero;
+        const g1 = Rational.gcd(this.num < 0n ? -this.num : this.num, o.den);
+        const g2 = Rational.gcd(o.num  < 0n ? -o.num  : o.num,  this.den);
+        return Rational.reduced(
+            (this.num / g1) * (o.num / g2),
+            (this.den / g2) * (o.den / g1)
         );
     }
-    subtract(other: Rational): Rational {
-        return new Rational(
-            this.num * other.den - other.num * this.den,
-            this.den * other.den
-        );
-    }
-    multiply(other: Rational): Rational {
-        return new Rational(this.num * other.num, this.den * other.den);
-    }
-    divide(other: Rational): Rational {
-        if (other.num === BigInt(0)) throw new Error("Rational: divisione per zero!");
-        return new Rational(this.num * other.den, this.den * other.num);
+
+    divide(o: Rational): Rational {
+        if (o.num === 0n) throw new Error("Rational: divisione per zero!");
+        const g1 = Rational.gcd(this.num < 0n ? -this.num : this.num, o.num < 0n ? -o.num : o.num);
+        const g2 = Rational.gcd(this.den, o.den);
+        let n = (this.num / g1) * (o.den / g2);
+        let d = (this.den / g2) * (o.num / g1);
+        if (d < 0n) { n = -n; d = -d; }
+        return Rational.reduced(n, d);
     }
 
     // ---- Funzioni ----
     abs(): Rational {
-        return this.num < BigInt(0) ? new Rational(-this.num, this.den) : this;
+        return this.num < 0n ? Rational.reduced(-this.num, this.den) : this;
     }
-    sqrt(): Rational {
-        // Approssima: restituisce p/q tale che (p/q)^2 ≈ this
-        return this.fromNumber(Math.sqrt(this.toNumber()));
-    }
+    sqrt(): Rational { return this.fromNumber(Math.sqrt(this.toNumber())); }
     round(): Rational {
-        // Arrotonda all'intero più vicino
-        const isNeg = this.num < BigInt(0);
-        const absNum = isNeg ? -this.num : this.num;
-        const half = this.den / BigInt(2);
-        const rounded = (absNum + half) / this.den;
-        return new Rational(isNeg ? -rounded : rounded);
+        const absNum  = this.num < 0n ? -this.num : this.num;
+        const rounded = (absNum + this.den / 2n) / this.den;
+        return Rational.reduced(this.num < 0n ? -rounded : rounded, 1n);
     }
+    /** I razionali sono auto-coniugati (sono reali). */
+    conjugate(): Rational { return this; }
 
     // ---- Comparazione ----
-    equals(other: Rational): boolean {
-        return this.num === other.num && this.den === other.den;
-    }
-    greaterThan(other: Rational): boolean {
-        return this.num * other.den > other.num * this.den;
-    }
-    lessThan(other: Rational): boolean {
-        return this.num * other.den < other.num * this.den;
-    }
-    /** Per Rational la tolleranza è ignorata: zero esatto. */
-    isNearZero(_tol: number): boolean {
-        return this.num === BigInt(0);
-    }
+    equals(o: Rational): boolean      { return this.num === o.num && this.den === o.den; }
+    greaterThan(o: Rational): boolean { return this.num * o.den > o.num * this.den; }
+    lessThan(o: Rational): boolean    { return this.num * o.den < o.num * this.den; }
+    isNearZero(_tol: number): boolean { return this.num === 0n; }
 
     // ---- Output ----
     toString(): string {
-        return this.den === BigInt(1) ? `${this.num}` : `${this.num}/${this.den}`;
+        return this.den === 1n ? `${this.num}` : `${this.num}/${this.den}`;
     }
-
-    toDecimal(precision: number = 10): string {
-        const factor = BigInt(10 ** precision);
-        const value = (this.num * factor) / this.den;
-        const s = value.toString().padStart(precision + 1, "0");
-        const dotIndex = s.length - precision;
-        return s.slice(0, dotIndex) + "." + s.slice(dotIndex);
+    toDecimal(precision = 10): string {
+        const factor = 10n ** BigInt(precision);
+        const value  = (this.num * factor) / this.den;
+        const s      = value.toString().padStart(precision + 1, "0");
+        const dot    = s.length - precision;
+        return s.slice(0, dot) + "." + s.slice(dot);
     }
 }

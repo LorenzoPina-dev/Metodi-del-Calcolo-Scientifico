@@ -1,36 +1,41 @@
 // solver/gausSeidelMat.ts
+//
+// Forma element-wise — aggiorna x[i] in-place ad ogni passo usando i valori
+// già aggiornati nella stessa iterazione (questo È la differenza con Jacobi).
+// O(n²) per iterazione, nessuna costruzione di T o C.
+//
 import { Matrix } from "..";
 import { INumeric } from "../type";
-import { decomposeDLU } from "../decomposition/dlu";
 import { _hasConverged } from "./_hasConverged";
 
-/**
- * Risolve A*x = b con il metodo di Gauss-Seidel (forma matriciale).
- * Formula: x_{k+1} = (D+L)^{-1} * (b - U * x_k)
- */
 export function solveGaussSeidelMat<T extends INumeric<T>>(
     A: Matrix<T>,
     b: Matrix<T>,
     tol: number = 1e-10,
     maxIter: number = 1000
 ): Matrix<T> {
-    if (A.rows !== A.cols) throw new Error("solveGaussSeidelMat: matrice non quadrata.");
+    const n = A.rows;
+    if (n !== A.cols) throw new Error("solveGaussSeidelMat: matrice non quadrata.");
 
-    const { D, L, U } = decomposeDLU(A);
-    const DL     = D.add(L);
-    const DL_inv = DL.inverse();       // usa smartInverse → solveLowerTriangular
+    const ad = A.data;
+    const bd = b.data;
+    let x = A.like(n, 1);
 
-    // T = -(D+L)^{-1} * U,  C = (D+L)^{-1} * b
-    const T = DL_inv.mul(U).mul(-1);
-    const C = DL_inv.mul(b);
+    for (let iter = 0; iter < maxIter; iter++) {
+        const xPrev = x.clone();
+        const xd = x.data;
 
-    let x     = A.like(A.rows, 1);
-    let xNext = A.like(A.rows, 1);
+        for (let i = 0; i < n; i++) {
+            const off = i * n;
+            let s = bd[i];
+            // j < i → usa xd[j] già aggiornato in questa iterazione
+            for (let j = 0; j < i; j++)  s = s.subtract(ad[off + j].multiply(xd[j]));
+            // j > i → usa xd[j] dell'iterazione precedente
+            for (let j = i + 1; j < n; j++) s = s.subtract(ad[off + j].multiply(xd[j]));
+            xd[i] = s.divide(ad[off + i]);
+        }
 
-    for (let k = 0; k < maxIter; k++) {
-        xNext = T.mul(x).add(C);
-        if (_hasConverged(x, xNext, tol)) return xNext;
-        x = xNext;
+        if (_hasConverged(xPrev, x, tol)) return x;
     }
     return x;
 }

@@ -1,60 +1,62 @@
 // algoritm/inverse.ts
+//
+// smartInverse usa classifyStructure (una passata O(n²)) invece di cinque
+// controlli strutturali separati. isOrthogonal (O(n³)) è rimosso dal
+// percorso default — troppo costoso per una eurisica.
+//
 import { Matrix } from "..";
 import { INumeric } from "../type";
 import { solveLowerTriangular, solveUpperTriangular } from "../solver/triangular";
+import { classifyStructure } from "../ops/det";
 
-/**
- * Inversa di una matrice diagonale: reciproco di ogni elemento diagonale.
- */
 export function inverseDiagonal<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
-    const out = A.like(A.rows, A.cols);
-    for (let i = 0; i < A.rows; i++) {
-        const v = A.get(i, i);
+    const n = A.rows;
+    const out = A.like(n, n);
+    const ad = A.data, od = out.data;
+    for (let i = 0; i < n; i++) {
+        const v = ad[i * n + i];
         if (A.isZero(v)) throw new Error("inverseDiagonal: elemento diagonale nullo.");
-        out.set(i, i, A.one.divide(v));
+        od[i * n + i] = A.one.divide(v);
     }
     return out;
 }
 
-/**
- * Inversa generale tramite LUP (risolve A*X = I colonna per colonna).
- */
 export function inverse<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
     return A.solve(A.likeIdentity(A.rows));
 }
 
-/** Inversa di una matrice ortogonale: A^{-1} = A^T. */
 export function inverseOrthogonal<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
     return A.t();
 }
 
-/** Pseudo-inversa di Moore-Penrose: (A^T A)^{-1} A^T. */
 export function pseudoInverse<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
     const At = A.t();
     return inverse(At.mul(A)).mul(At);
 }
 
-/**
- * Inversa di una matrice triangolare (superiore o inferiore).
- * Risolve A * X = I sfruttando la struttura triangolare.
- */
 export function inverseTriangular<T extends INumeric<T>>(
-    A: Matrix<T>,
-    type: "upper" | "lower"
+    A: Matrix<T>, type: "upper" | "lower"
 ): Matrix<T> {
-    const I  = A.likeIdentity(A.rows);
-    if (type === "lower") return solveLowerTriangular(A, I);
-    return solveUpperTriangular(A, I);
+    const I = A.likeIdentity(A.rows);
+    return type === "lower"
+        ? solveLowerTriangular(A, I)
+        : solveUpperTriangular(A, I);
 }
 
 /**
- * Sceglie automaticamente l'algoritmo di inversione più efficiente.
+ * Sceglie l'algoritmo di inversione più efficiente in una sola O(n²) passata.
+ * Non chiama isOrthogonal (O(n³)) per default: troppo costoso per un'euristica.
+ * Usa inverseOrthogonal solo se il chiamante lo richiede esplicitamente
+ * tramite A.t() dopo aver verificato la proprietà.
  */
 export function smartInverse<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
-    if (!A.isSquare())          return pseudoInverse(A);
-    if (A.isDiagonal())         return inverseDiagonal(A);
-    if (A.isUpperTriangular())  return inverseTriangular(A, "upper");
-    if (A.isLowerTriangular())  return inverseTriangular(A, "lower");
-    if (A.isOrthogonal())       return inverseOrthogonal(A);
+    if (!A.isSquare())  return pseudoInverse(A);
+
+    const struct = classifyStructure(A);
+    if (struct === "diagonal") return inverseDiagonal(A);
+    if (struct === "upper")    return inverseTriangular(A, "upper");
+    if (struct === "lower")    return inverseTriangular(A, "lower");
+
+    // Caso generale: LUP
     return inverse(A);
 }

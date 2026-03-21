@@ -2,13 +2,15 @@
 import { Matrix } from "..";
 import { INumeric } from "../type";
 
-/** Estrae la parte triangolare inferiore (con offset k, default 0). */
+/** Triangolare inferiore con offset k (default 0). Accesso diretto a data[]. */
 export function tril<T extends INumeric<T>>(A: Matrix<T>, k = 0): Matrix<T> {
-    const out = A.like(A.rows, A.cols);
-    for (let i = 0; i < A.rows; i++) {
-        for (let j = 0; j <= Math.min(i + k, A.cols - 1); j++) {
-            if (j >= 0) out.set(i, j, A.get(i, j));
-        }
+    const R = A.rows, C = A.cols;
+    const out = A.like(R, C);
+    const ad = A.data, od = out.data;
+    for (let i = 0; i < R; i++) {
+        const off = i * C;
+        const limit = Math.min(i + k + 1, C);
+        for (let j = 0; j < limit; j++) od[off + j] = ad[off + j];
     }
     return out;
 }
