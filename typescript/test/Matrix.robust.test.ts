@@ -47,7 +47,6 @@ describe('Matrix robust tests', () => {
         expect(I.det()).toBeCloseTo(1);
 
         const randomMat = randomMatrix(5,5).add(Matrix.diag(5,2)); // matrice diagonale dominante
-        console.log("Random matrix:\n", randomMat.toString());
         const { U, swaps } = Matrix.decomp.lup(randomMat);
         let detViaLUP = (-1)**swaps;
         for (let k=0;k<U.rows;k++) detViaLUP *= U.get(k,k);

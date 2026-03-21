@@ -56,8 +56,6 @@ describe("Test sui metodi di scomposizione", () => {
       const { L, U, P } = Matrix.decomp.luPivoting(singularRowSwap);
       const PA = P.mul(singularRowSwap);
       const LU = L.mul(U);
-      console.log("PA:\n", PA.toString());
-      console.log("LU:\n", LU.toString());
       testReconstruction(PA, LU);
     });
   });
@@ -93,9 +91,6 @@ describe("Test sui metodi di scomposizione", () => {
 
         const QtQ = Q.t().mul(Q);
         const I = Matrix.identity(Q.cols); // <-- FIX
-        console.log("QtQ:\n", QtQ.toString());
-        console.log("I:\n", I.toString());
-
         testReconstruction(I, QtQ);
         });
     });

@@ -14,7 +14,7 @@ export function inverseDiagonal(A: Matrix): Matrix {
 
     
     export function inverse(A: Matrix): Matrix {
-        return solve(A, identity(A.rows));
+        return A.solve(identity(A.rows));
     }
    export function inverseOrthogonal(A: Matrix): Matrix {
         // In una matrice ortogonale, l'inversa è la trasposta
@@ -64,38 +64,17 @@ export function inverseDiagonal(A: Matrix): Matrix {
      * Ordine di controllo: Scalare -> Diagonale -> Ortogonale -> Triangolare -> Quadrata -> Rettangolare.
      */
    export function smartInverse(A: Matrix): Matrix {
-        const n = A.rows;
-        const m = A.cols;
-
         // 1. Caso Rettangolare (Pseudo-inversa)
-        if (!A.isSquare()) {
-            console.log("SmartInverse: Matrice rettangolare rilevata. Uso Moore-Penrose.");
-            return pseudoInverse(A);
-        }
-
-        if (A.isDiagonal()) {
-            console.log("SmartInverse: Matrice diagonale rilevata.");
-            return inverseDiagonal(A);
-        }
-
-        if (A.isUpperTriangular()) {
-            console.log("SmartInverse: Matrice triangolare superiore rilevata.");
-            return inverseTriangular(A,"upper");
-        }
-        if (A.isLowerTriangular()) {
-            console.log("SmartInverse: Matrice triangolare inferiore rilevata.");
-            return inverseTriangular(A,"lower");
-        }
+        if (!A.isSquare()) return pseudoInverse(A);
+        if (A.isDiagonal()) return inverseDiagonal(A);
+        if (A.isUpperTriangular()) return inverseTriangular(A,"upper");
+        if (A.isLowerTriangular()) return inverseTriangular(A,"lower");
 
         // 4. Controllo Ortogonale (A^T * A = I)
         // Nota: Questo controllo costa O(n^3), ha senso solo se prevedi molte matrici di rotazione.
         // Se la matrice è grande, conviene saltarlo o farlo solo su richiesta.
-        if (A.isOrthogonal()) {
-            console.log("SmartInverse: Matrice ortogonale rilevata.");
-            return A.t();
-        }
+        if (A.isOrthogonal()) return A.t();
 
         // 5. Fallback: Metodo Diretto LUP
-        console.log("SmartInverse: Nessun pattern specifico. Uso decomposizione LUP.");
         return inverse(A);
     }

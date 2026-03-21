@@ -1,6 +1,6 @@
 // Matrix.fullBenchmark.ts
+import { writeFileSync } from 'fs';
 import { Matrix } from '../src';
-import fs from 'fs';
 
 // dimensioni da testare
 const sizes = [50, 100, 150, 200, 250, 300];
@@ -91,6 +91,6 @@ const results: Record<number, Record<string, number>> = {};
     }
 
     // salva i risultati su file JSON
-    fs.writeFileSync('matrix_full_benchmark_results.json', JSON.stringify(results, null, 2));
+    writeFileSync('matrix_full_benchmark_results.json', JSON.stringify(results, null, 2));
     console.log('\nBenchmark completo. Risultati salvati in matrix_full_benchmark_results.json');
 })();

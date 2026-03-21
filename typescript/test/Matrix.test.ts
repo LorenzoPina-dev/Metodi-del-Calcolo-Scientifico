@@ -26,7 +26,6 @@ describe('Matrix core operations', () => {
             expect(C.get(0,0)).toBe(3);
             expect(C.rows).toBe(100);
         });
-        console.log('add time (ms):', time);
     });
 
     it('sub', () => {
@@ -35,7 +34,6 @@ describe('Matrix core operations', () => {
     });
 
     it('mul', () => {
-        console.log("Testing multiplication...");
         const C = A.mul(B);
         expect(C.get(0,0)).toBe(200);
     });
