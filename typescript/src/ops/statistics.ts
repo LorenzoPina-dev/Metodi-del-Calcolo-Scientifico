@@ -1,177 +1,112 @@
-import { Matrix  } from "..";
+// ops/statistics.ts
+import { Matrix } from "..";
+import { INumeric } from "../type";
 
-
-type CompareFn = (newVal: number, best: number) => boolean;
-
-/**
- * MAX - MATLAB style
- */
-
-export function max(this: Matrix, dim: 1 | 2 = 1): { value: Matrix; index: Int32Array } {
-    const comp: CompareFn = (newVal, best) => newVal > best;
-    return dim === 1 
-        ? computeColumnReduction(this, -Infinity, comp)
-        : computeRowReduction(this, -Infinity, comp);
+// ---- MAX ----
+export function max<T extends INumeric<T>>(
+    this: Matrix<T>,
+    dim: 1 | 2 = 1
+): { value: Matrix<T>; index: Int32Array } {
+    return dim === 1
+        ? columnReduction(this, (a, b) => a.greaterThan(b))
+        : rowReduction(this, (a, b) => a.greaterThan(b));
 }
 
-/**
- * MIN - MATLAB style
- */
-export function min(this: Matrix, dim: 1 | 2 = 1): { value: Matrix; index: Int32Array } {
-    const comp: CompareFn = (newVal, best) => newVal < best;
-    return dim === 1 
-        ? computeColumnReduction(this, Infinity, comp)
-        : computeRowReduction(this, Infinity, comp);
+// ---- MIN ----
+export function min<T extends INumeric<T>>(
+    this: Matrix<T>,
+    dim: 1 | 2 = 1
+): { value: Matrix<T>; index: Int32Array } {
+    return dim === 1
+        ? columnReduction(this, (a, b) => a.lessThan(b))
+        : rowReduction(this, (a, b) => a.lessThan(b));
 }
 
-/**
- * Riduttore per Colonne (dim 1)
- * Risultato: 1 x C
- */
-function computeColumnReduction(A: Matrix, initialValue: number, compare: CompareFn): { value: Matrix; index: Int32Array } {
-    const R = A.rows, C = A.cols, Adat = A.data;
-    const vOut = new Matrix(1, C);
+// ---- SUM ----
+export function sum<T extends INumeric<T>>(this: Matrix<T>, dim: 1 | 2 = 1): Matrix<T> {
+    return dim === 1 ? sumColumns(this) : sumRows(this);
+}
+
+// ---- MEAN ----
+export function mean<T extends INumeric<T>>(this: Matrix<T>, dim: 1 | 2 = 1): Matrix<T> {
+    const s = sum.call(this, dim);
+    const divisor = this.zero.fromNumber(dim === 1 ? this.rows : this.cols);
+    for (let i = 0; i < s.data.length; i++) s.data[i] = s.data[i].divide(divisor);
+    return s;
+}
+
+// ==================== PRIVATI ====================
+
+function columnReduction<T extends INumeric<T>>(
+    A: Matrix<T>,
+    isBetter: (candidate: T, current: T) => boolean
+): { value: Matrix<T>; index: Int32Array } {
+    const { rows: R, cols: C } = A;
+    const vOut = A.like(1, C);
     const iOut = new Int32Array(C);
-    
-    vOut.data.fill(initialValue);
 
-    for (let i = 0; i < R; i++) {
+    // Inizializza con il primo elemento di ogni colonna
+    for (let j = 0; j < C; j++) {
+        vOut.data[j] = A.data[j]; // riga 0
+        iOut[j] = 1;
+    }
+
+    for (let i = 1; i < R; i++) {
         const off = i * C;
         for (let j = 0; j < C; j++) {
-            const val = Adat[off + j];
-            if (compare(val, vOut.data[j])) {
-                vOut.data[j] = val;
-                iOut[j] = i + 1; // Base 1 come richiesto
+            if (isBetter(A.data[off + j], vOut.data[j])) {
+                vOut.data[j] = A.data[off + j];
+                iOut[j] = i + 1; // 1-based
             }
         }
     }
     return { value: vOut, index: iOut };
 }
 
-/**
- * Riduttore per Righe (dim 2)
- * Risultato: R x 1
- */
-function computeRowReduction(A: Matrix, initialValue: number, compare: CompareFn): { value: Matrix; index: Int32Array } {
-    const R = A.rows, C = A.cols, Adat = A.data;
-    const vOut = new Matrix(R, 1);
+function rowReduction<T extends INumeric<T>>(
+    A: Matrix<T>,
+    isBetter: (candidate: T, current: T) => boolean
+): { value: Matrix<T>; index: Int32Array } {
+    const { rows: R, cols: C } = A;
+    const vOut = A.like(R, 1);
     const iOut = new Int32Array(R);
 
     for (let i = 0; i < R; i++) {
         const off = i * C;
-        let bestVal = initialValue;
-        let bestIdx = 0;
-        
-        for (let j = 0; j < C; j++) {
-            const val = Adat[off + j];
-            if (compare(val, bestVal)) {
-                bestVal = val;
-                bestIdx = j + 1; // Base 1
+        let best = A.data[off];
+        let bestJ = 1;
+        for (let j = 1; j < C; j++) {
+            if (isBetter(A.data[off + j], best)) {
+                best = A.data[off + j];
+                bestJ = j + 1; // 1-based
             }
         }
-        vOut.data[i] = bestVal;
-        iOut[i] = bestIdx;
+        vOut.data[i] = best;
+        iOut[i] = bestJ;
     }
     return { value: vOut, index: iOut };
 }
 
-
-// ============================================================================
-// METODI PUBBLICI
-// ============================================================================
-
-/**
- * Somma degli elementi lungo la dimensione specificata.
- * dim 1: somma le colonne (risultato 1xN)
- * dim 2: somma le righe (risultato Mx1)
- */
-export function sum(this: Matrix, dim: 1 | 2 = 1): Matrix {
-    return dim === 1 ? sumColumns(this) : sumRows(this);
-}
-
-/**
- * Media degli elementi lungo la dimensione specificata.
- */
-export function mean(this: Matrix, dim: 1 | 2 = 1): Matrix {
-    const s = this.sum(dim);
-    const divisor = dim === 1 ? this.rows : this.cols;
-    
-    divideInPlace(s.data, divisor);
-    
-    return s;
-}
-
-// ============================================================================
-// LOGICA PRIVATA (Helper)
-// ============================================================================
-
-/**
- * Riduzione lungo le colonne (Verticale)
- * Strategia: Cache-friendly. Iteriamo per righe e accumuliamo nel buffer di output.
- */
-function sumColumns(A: Matrix): Matrix {
-    const out = new (A.constructor as any)(1, A.cols);
-    const Adat = A.data, Odat = out.data;
+function sumColumns<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
+    const out = A.like(1, A.cols);
     const { rows, cols } = A;
-
     for (let i = 0; i < rows; i++) {
-        const offset = i * cols;
-        let j = 0;
-        
-        // Loop Unrolling x4
-        for (; j <= cols - 4; j += 4) {
-            Odat[j]     += Adat[offset + j];
-            Odat[j + 1] += Adat[offset + j + 1];
-            Odat[j + 2] += Adat[offset + j + 2];
-            Odat[j + 3] += Adat[offset + j + 3];
+        const off = i * cols;
+        for (let j = 0; j < cols; j++) {
+            out.data[j] = out.data[j].add(A.data[off + j]);
         }
-        // Residuo
-        for (; j < cols; j++) Odat[j] += Adat[offset + j];
     }
     return out;
 }
 
-/**
- * Riduzione lungo le righe (Orizzontale)
- * Strategia: Accumulatore locale per riga per minimizzare gli accessi in scrittura al buffer.
- */
-function sumRows(A: Matrix): Matrix {
-    const out = new (A.constructor as any)(A.rows, 1);
-    const Adat = A.data, Odat = out.data;
+function sumRows<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
+    const out = A.like(A.rows, 1);
     const { rows, cols } = A;
-
     for (let i = 0; i < rows; i++) {
-        const offset = i * cols;
-        let s = 0;
-        let j = 0;
-
-        // Loop Unrolling x4 (Accumulo in registro locale)
-        for (; j <= cols - 4; j += 4) {
-            s += Adat[offset + j]     + Adat[offset + j + 1] + 
-                 Adat[offset + j + 2] + Adat[offset + j + 3];
-        }
-        // Residuo
-        for (; j < cols; j++) s += Adat[offset + j];
-        
-        Odat[i] = s;
+        const off = i * cols;
+        let s = A.zero;
+        for (let j = 0; j < cols; j++) s = s.add(A.data[off + j]);
+        out.data[i] = s;
     }
     return out;
-}
-
-/**
- * Divisione in-place del buffer per il calcolo della media.
- */
-function divideInPlace(data: Float64Array, divisor: number): void {
-    const len = data.length;
-    let i = 0;
-    
-    // Loop Unrolling x4
-    for (; i <= len - 4; i += 4) {
-        data[i]     /= divisor;
-        data[i + 1] /= divisor;
-        data[i + 2] /= divisor;
-        data[i + 3] /= divisor;
-    }
-    // Residuo
-    for (; i < len; i++) data[i] /= divisor;
 }

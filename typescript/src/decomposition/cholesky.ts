@@ -1,26 +1,41 @@
+// decomposition/cholesky.ts
 import { Matrix } from "..";
-import { identity } from "../init";
 import { INumeric } from "../type";
 
-export function cholesky(A: Matrix): { L: Matrix } {
-    if (A.rows !== A.cols) throw new Error("Matrix must be square");
-    if (!A.isSymmetric()) throw new Error("Matrix is not symmetric");
+/**
+ * Decomposizione di Cholesky: A = L * L^T.
+ * Richiede A simmetrica e definita positiva.
+ */
+export function cholesky<T extends INumeric<T>>(A: Matrix<T>): { L: Matrix<T> } {
+    if (A.rows !== A.cols) throw new Error("cholesky: matrice non quadrata.");
+    if (!A.isSymmetric())  throw new Error("cholesky: matrice non simmetrica.");
+
     const N = A.rows;
-    const L = identity(N);
-    for (let n = 0; n < N; n++) {
-        let sum2 : INumeric = INumeric.zero;
-        for (let m = 0; m <= n; m++) {
-            if (n === m) {
-                let s = A.get(n, n).subtract(sum2);
-                if (s.lessThan(INumeric.zero)) throw new Error("Matrix is not positive definite");
-                L.set(n, n, s.sqrt());
-            } else {
-                let sum : INumeric = INumeric.zero;
-                for (let k = 0; k < m; k++) sum = sum.add(L.get(n, k).multiply(L.get(m, k)));
-                L.set(n, m, A.get(n, m).subtract(sum).divide(L.get(m, m)));
-                sum2 = sum2.add(L.get(n, m).multiply(L.get(n, m)));
+    const L = A.like(N, N);
+
+    for (let j = 0; j < N; j++) {
+        // Elemento diagonale: L[j,j] = sqrt( A[j,j] - sum(L[j,k]^2, k<j) )
+        let diagSum = A.zero;
+        for (let k = 0; k < j; k++) {
+            diagSum = diagSum.add(L.get(j, k).multiply(L.get(j, k)));
+        }
+        const d = A.get(j, j).subtract(diagSum);
+
+        // Verifica definita positiva
+        if (d.negate().greaterThan(A.zero)) {
+            throw new Error("cholesky: la matrice non è definita positiva.");
+        }
+        L.set(j, j, d.sqrt());
+
+        // Colonna j, righe sotto la diagonale
+        for (let i = j + 1; i < N; i++) {
+            let offSum = A.zero;
+            for (let k = 0; k < j; k++) {
+                offSum = offSum.add(L.get(i, k).multiply(L.get(j, k)));
             }
+            L.set(i, j, A.get(i, j).subtract(offSum).divide(L.get(j, j)));
         }
     }
+
     return { L };
 }

@@ -1,30 +1,28 @@
+// decomposition/dlu.ts
 import { Matrix } from "..";
+import { INumeric } from "../type";
 
 /**
- * Scompone la matrice A in forma additiva: A = D + L + U
- * D: Diagonale
- * L: Triangolare inferiore stretta
- * U: Triangolare superiore stretta
+ * Scompone A = D + L_strict + U_strict (forma additiva).
+ * D:  diagonale
+ * L:  triangolare inferiore stretta (off-diagonale inferiore)
+ * U:  triangolare superiore stretta (off-diagonale superiore)
  */
-export function decomposeDLU(A: Matrix): { D: Matrix; L: Matrix; U: Matrix } {
-    if (A.rows !== A.cols) throw new Error("La matrice deve essere quadrata.");
+export function decomposeDLU<T extends INumeric<T>>(
+    A: Matrix<T>
+): { D: Matrix<T>; L: Matrix<T>; U: Matrix<T> } {
+    if (A.rows !== A.cols) throw new Error("decomposeDLU: la matrice deve essere quadrata.");
 
-    const D = new Matrix(A.rows, A.cols);
-    const L = new Matrix(A.rows, A.cols);
-    const U = new Matrix(A.rows, A.cols);
+    const D = A.like(A.rows, A.cols);
+    const L = A.like(A.rows, A.cols);
+    const U = A.like(A.rows, A.cols);
 
     for (let i = 0; i < A.rows; i++) {
         for (let j = 0; j < A.cols; j++) {
-            // Adattamento dell'indice per la lettura in memoria
-            const val = A.get(i, j); 
-            
-            if (i === j) {
-                D.set(i, j, val);
-            } else if (i > j) {
-                L.set(i, j, val);
-            } else {
-                U.set(i, j, val);
-            }
+            const v = A.get(i, j);
+            if (i === j)      D.set(i, j, v);
+            else if (i > j)   L.set(i, j, v);
+            else              U.set(i, j, v);
         }
     }
     return { D, L, U };

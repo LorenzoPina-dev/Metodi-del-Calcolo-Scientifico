@@ -1,39 +1,63 @@
+// decomposition/lup.ts
 import { Matrix } from "..";
-import { identity, zeros } from "../init";
+import { INumeric } from "../type";
 
-export function lup(A: Matrix): { L: Matrix; U: Matrix; P: number[], swaps: number } {
+/**
+ * Decomposizione LUP con pivoting parziale.
+ * Restituisce L, U (entrambe dello stesso tipo T di A) e il vettore di permutazione P.
+ */
+export function lup<T extends INumeric<T>>(
+    A: Matrix<T>
+): { L: Matrix<T>; U: Matrix<T>; P: number[]; swaps: number } {
     const n = A.rows;
-    if (n !== A.cols) throw new Error("Square only");
-    const AClone = A.clone();
+    if (n !== A.cols) throw new Error("lup: matrice non quadrata.");
+
+    const W = A.clone();          // copia di lavoro
     const P = Array.from({ length: n }, (_, i) => i);
     let swaps = 0;
 
     for (let i = 0; i < n; i++) {
-        let max = i, maxVal = AClone.get(i, i).abs();
+        // --- Ricerca del pivot massimo in colonna i ---
+        let maxVal = W.get(i, i).abs();
+        let maxRow = i;
         for (let k = i + 1; k < n; k++) {
-            const val = AClone.get(k, i).abs();
-            if (val.greaterThan(maxVal)) { maxVal = val; max = k; }
+            const v = W.get(k, i).abs();
+            if (v.greaterThan(maxVal)) { maxVal = v; maxRow = k; }
         }
-        if (Matrix.isZero(maxVal)) throw new Error("Singular matrix");
-        if (max !== i) {
+
+        if (W.isZero(maxVal)) throw new Error("lup: matrice singolare.");
+
+        // --- Scambio righe ---
+        if (maxRow !== i) {
             swaps++;
             for (let j = 0; j < n; j++) {
-                const tmp = AClone.get(i, j);
-                AClone.set(i, j, AClone.get(max, j));
-                AClone.set(max, j, tmp);
+                const tmp = W.get(i, j);
+                W.set(i, j, W.get(maxRow, j));
+                W.set(maxRow, j, tmp);
             }
-            [P[i], P[max]] = [P[max], P[i]];
+            [P[i], P[maxRow]] = [P[maxRow], P[i]];
         }
+
+        // --- Eliminazione ---
         for (let j = i + 1; j < n; j++) {
-            const factor = AClone.get(j, i).divide(AClone.get(i, i));
-            AClone.set(j, i, factor);
-            for (let k = i + 1; k < n; k++) AClone.set(j, k, AClone.get(j, k).subtract(factor.multiply(AClone.get(i, k))));
+            const factor = W.get(j, i).divide(W.get(i, i));
+            W.set(j, i, factor);                      // salva il moltiplicatore in L
+            for (let k = i + 1; k < n; k++) {
+                W.set(j, k, W.get(j, k).subtract(factor.multiply(W.get(i, k))));
+            }
         }
     }
-    const L = identity(n), U = zeros(n, n);
-    for (let i = 0; i < n; i++)
-        for (let j = 0; j < n; j++)
-            if (i > j) L.set(i, j, AClone.get(i, j));
-            else U.set(i, j, AClone.get(i, j));
+
+    // --- Estrazione L e U ---
+    const L = A.likeIdentity(n);
+    const U = A.like(n, n);
+
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            if (i > j)      L.set(i, j, W.get(i, j));
+            else            U.set(i, j, W.get(i, j));
+        }
+    }
+
     return { L, U, P, swaps };
 }

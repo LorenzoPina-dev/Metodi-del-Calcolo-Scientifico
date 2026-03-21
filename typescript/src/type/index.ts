@@ -1,4 +1,5 @@
-export * from "./float"
-export * from "./complex"
-export * from "./bigRational"
-export * from "./interface"
+// type/index.ts
+export * from "./float";
+export * from "./complex";
+export * from "./bigRational";
+export * from "./interface";

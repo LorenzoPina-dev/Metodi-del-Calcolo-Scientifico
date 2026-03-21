@@ -1,61 +1,70 @@
+// decomposition/lu_total.ts
 import { Matrix } from "..";
-import { Float64M } from "../type";
+import { INumeric } from "../type";
 
-export function luPivoting(A: Matrix): { P: Matrix; L: Matrix; U: Matrix } {
+/**
+ * Decomposizione LU con pivoting totale (riga + colonna).
+ * Restituisce L, U e i vettori di permutazione PR (righe) e PC (colonne).
+ */
+export function lu_total<T extends INumeric<T>>(
+    A: Matrix<T>
+): { L: Matrix<T>; U: Matrix<T>; PR: number[]; PC: number[]; swaps: number } {
     const n = A.rows;
-    if (n !== A.cols) throw new Error("Matrix must be square");
+    if (n !== A.cols) throw new Error("lu_total: matrice non quadrata.");
 
-    const U = A.clone();
-    const L = Matrix.identity(n);
-    const P = Matrix.identity(n);
+    const W = A.clone();
+    const PR = Array.from({ length: n }, (_, i) => i);
+    const PC = Array.from({ length: n }, (_, i) => i);
+    let swaps = 0;
 
-    const EPS = new Float64M(1e-12);
-
-    for (let k = 0; k < n; k++) {
-        // Pivoting (parziale)
-        let pivotRow = k;
-        let max = U.get(k, k).abs();
-
-        for (let i = k + 1; i < n; i++) {
-            const val = U.get(i, k).abs();
-            if (val.greaterThan(max)) {
-                max = val;
-                pivotRow = i;
+    for (let i = 0; i < n; i++) {
+        // Ricerca pivot massimo nel sotto-blocco [i..n)×[i..n)
+        let maxVal = W.get(i, i).abs();
+        let maxR = i, maxC = i;
+        for (let r = i; r < n; r++) {
+            for (let c = i; c < n; c++) {
+                const v = W.get(r, c).abs();
+                if (v.greaterThan(maxVal)) { maxVal = v; maxR = r; maxC = c; }
             }
         }
 
-        if (max.lessThan(EPS)) throw new Error("Matrix is singular or nearly singular");
+        if (W.isZero(maxVal)) throw new Error("lu_total: matrice singolare.");
 
-        // Swap righe
-        if (pivotRow !== k) {
-            swapRows.call(U, k, pivotRow);
-            swapRows.call(P, k, pivotRow);
-
-            // swap solo la parte già costruita di L
-            for (let j = 0; j < k; j++) {
-                const temp = L.get(k, j);
-                L.set(k, j, L.get(pivotRow, j));
-                L.set(pivotRow, j, temp);
+        // Scambio righe
+        if (maxR !== i) {
+            swaps++;
+            for (let j = 0; j < n; j++) {
+                const t = W.get(i, j); W.set(i, j, W.get(maxR, j)); W.set(maxR, j, t);
             }
+            [PR[i], PR[maxR]] = [PR[maxR], PR[i]];
+        }
+        // Scambio colonne
+        if (maxC !== i) {
+            swaps++;
+            for (let j = 0; j < n; j++) {
+                const t = W.get(j, i); W.set(j, i, W.get(j, maxC)); W.set(j, maxC, t);
+            }
+            [PC[i], PC[maxC]] = [PC[maxC], PC[i]];
         }
 
         // Eliminazione
-        for (let i = k + 1; i < n; i++) {
-            const factor = U.get(i, k).divide(U.get(k, k));
-            L.set(i, k, factor);
-
-            for (let j = k; j < n; j++) {
-                U.set(i, j, U.get(i, j).subtract(factor.multiply(U.get(k, j))));
+        for (let j = i + 1; j < n; j++) {
+            const factor = W.get(j, i).divide(W.get(i, i));
+            W.set(j, i, factor);
+            for (let k = i + 1; k < n; k++) {
+                W.set(j, k, W.get(j, k).subtract(factor.multiply(W.get(i, k))));
             }
         }
     }
 
-    return { P, L, U };
-}
-function swapRows(this: Matrix, i: number, j: number) {
-    for (let col = 0; col < this.cols; col++) {
-        const temp = this.get(i, col);
-        this.set(i, col, this.get(j, col));
-        this.set(j, col, temp);
+    const L = A.likeIdentity(n);
+    const U = A.like(n, n);
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            if (i > j) L.set(i, j, W.get(i, j));
+            else       U.set(i, j, W.get(i, j));
+        }
     }
+
+    return { L, U, PR, PC, swaps };
 }

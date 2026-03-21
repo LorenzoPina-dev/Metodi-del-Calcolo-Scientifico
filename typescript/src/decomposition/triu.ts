@@ -1,17 +1,14 @@
+// decomposition/triu.ts
 import { Matrix } from "..";
-import { zeros } from "../init";
+import { INumeric } from "../type";
 
-// Estrae la parte triangolare superiore della matrice con offset k
-export function triu(A: Matrix, k = 0): Matrix {
-    const n = A.rows;
-    const m = A.cols;
-    const B = zeros(n, m);
-    for (let i = 0; i < n; i++) {
-        for (let j = 0; j < m; j++) {
-            if (j - i >= k) {
-                B.set(i, j, A.get(i, j));
-            }
+/** Estrae la parte triangolare superiore (con offset k, default 0). */
+export function triu<T extends INumeric<T>>(A: Matrix<T>, k = 0): Matrix<T> {
+    const out = A.like(A.rows, A.cols);
+    for (let i = 0; i < A.rows; i++) {
+        for (let j = Math.max(i + k, 0); j < A.cols; j++) {
+            out.set(i, j, A.get(i, j));
         }
     }
-    return B;
+    return out;
 }

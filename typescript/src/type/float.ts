@@ -1,56 +1,50 @@
-import { INumeric } from ".";
+// type/float.ts
+import { INumeric } from "./interface";
 
 export class Float64M implements INumeric<Float64M> {
-  constructor(public readonly value: number) {}
-  static get zero(): Float64M { return new Float64M(0); }
-  static get one(): Float64M { return new Float64M(1); }
+    constructor(public readonly value: number) {}
 
-  // 1. Addizione
-  add(other: Float64M): Float64M {
-    return new Float64M(this.value + other.value);
-  }
+    static readonly zero: Float64M = new Float64M(0);
+    static readonly one: Float64M  = new Float64M(1);
 
-  // 2. Sottrazione
-  subtract(other: Float64M): Float64M {
-    return new Float64M(this.value - other.value);
-  }
+    // ---- Factory ----
+    fromNumber(n: number): Float64M { return new Float64M(n); }
+    toNumber(): number { return this.value; }
 
-  // 3. Moltiplicazione
-  multiply(other: Float64M): Float64M {
-    return new Float64M(this.value * other.value);
-  }
+    /**
+     * valueOf() permette alla coercizione JS di funzionare:
+     *   A.get(i,j) + 3          → number
+     *   totalSum * 2            → number
+     *   Math.abs(get(i,j))      → number
+     *   toBeCloseTo(get(i,j))   → confronto numerico corretto
+     *
+     * NOTA: toBe() usa Object.is() (strict), quindi
+     *   expect(get(i,j)).toBe(5) fallisce ancora.
+     *   Usare expect(get(i,j).value).toBe(5)
+     *   oppure  expect(get(i,j).toNumber()).toBe(5).
+     */
+    valueOf(): number { return this.value; }
 
-  // 4. Divisione
-  divide(other: Float64M): Float64M {
-    if (other.value === 0) throw new Error("Divisione per zero!");
-    return new Float64M(this.value / other.value);
-  }
+    // ---- Aritmetica ----
+    negate(): Float64M    { return new Float64M(-this.value); }
+    add(other: Float64M): Float64M      { return new Float64M(this.value + other.value); }
+    subtract(other: Float64M): Float64M { return new Float64M(this.value - other.value); }
+    multiply(other: Float64M): Float64M { return new Float64M(this.value * other.value); }
+    divide(other: Float64M): Float64M {
+        if (other.value === 0) throw new Error("Float64M: divisione per zero!");
+        return new Float64M(this.value / other.value);
+    }
 
-  // 5. Comparazione
-  greaterThan(other: Float64M): boolean {
-    return this.value > other.value;
-  }
+    // ---- Funzioni ----
+    abs(): Float64M   { return new Float64M(Math.abs(this.value)); }
+    sqrt(): Float64M  { return new Float64M(Math.sqrt(this.value)); }
+    round(): Float64M { return new Float64M(Math.round(this.value)); }
 
-  lessThan(other: Float64M): boolean {
-    return this.value < other.value;
-  }
+    // ---- Comparazione ----
+    greaterThan(other: Float64M): boolean { return this.value > other.value; }
+    lessThan(other: Float64M): boolean    { return this.value < other.value; }
+    equals(other: Float64M): boolean      { return Math.abs(this.value - other.value) < Number.EPSILON; }
+    isNearZero(tol: number): boolean      { return Math.abs(this.value) < tol; }
 
-  // Uguaglianza con tolleranza (Epsilon)
-  // Nota: Nei float64 è meglio non usare === a causa dei micro-errori di precisione
-  equals(other: Float64M): boolean {
-    return Math.abs(this.value - other.value) < Number.EPSILON;
-  }
-  abs(): Float64M {
-    return new Float64M(Math.abs(this.value));
-  }
-  sqrt(): Float64M {
-    return new Float64M(Math.sqrt(this.value));
-  }
-  round(): Float64M {
-    return new Float64M(Math.round(this.value));
-  }
-
-  toString(): string {
-    return this.value.toString();
-  }
+    toString(): string { return this.value.toString(); }
 }

@@ -1,38 +1,48 @@
+// decomposition/qr.ts
 import { Matrix } from "..";
-import { identity, zeros } from "../init";
+import { INumeric } from "../type";
 
-export function qr(A: Matrix): { Q: Matrix; R: Matrix } {
+/**
+ * Decomposizione QR tramite Gram-Schmidt classico.
+ * A = Q * R, con Q ortogonale (m×n) e R triangolare superiore (n×n).
+ */
+export function qr<T extends INumeric<T>>(A: Matrix<T>): { Q: Matrix<T>; R: Matrix<T> } {
     const m = A.rows;
     const n = A.cols;
-    const Q = zeros(m, n);
-    const R = zeros(n, n);
-    const AClone = A.clone();
+
+    const Q = A.like(m, n);
+    const R = A.like(n, n);
+    const W = A.clone();   // copia di lavoro (verrà modificata da Gram-Schmidt)
 
     for (let k = 0; k < n; k++) {
-        // r_kk = ||a_k||
-        let norm = INumeric.zero;
+        // --- Norma della colonna k ---
+        let normSq = A.zero;
         for (let i = 0; i < m; i++) {
-            const val = AClone.get(i, k);
-            norm = norm.add(val.multiply(val));
+            const v = W.get(i, k);
+            normSq = normSq.add(v.multiply(v));
         }
-        norm = norm.sqrt();
-        if (norm.equals(INumeric.zero)) throw new Error("Matrix has linearly dependent columns");
-        R.set(k, k, norm);
+        const normK = normSq.sqrt();
 
-        // q_k = a_k / r_kk
-        for (let i = 0; i < m; i++) {
-            Q.set(i, k, AClone.get(i, k).divide(norm));
+        if (A.isZero(normK)) {
+            throw new Error("qr: colonne linearmente dipendenti alla colonna " + k + ".");
         }
 
-        // Gram-Schmidt: aggiornamento colonne successive
+        R.set(k, k, normK);
+
+        // q_k = a_k / ||a_k||
+        for (let i = 0; i < m; i++) {
+            Q.set(i, k, W.get(i, k).divide(normK));
+        }
+
+        // Proiezioni sulle colonne successive: a_j -= (q_k · a_j) * q_k
         for (let j = k + 1; j < n; j++) {
-            let r_kj = INumeric.zero;
+            let dot = A.zero;
             for (let i = 0; i < m; i++) {
-                r_kj = r_kj.add(Q.get(i, k).multiply(AClone.get(i, j)));
+                dot = dot.add(Q.get(i, k).multiply(W.get(i, j)));
             }
-            R.set(k, j, r_kj);
+            R.set(k, j, dot);
             for (let i = 0; i < m; i++) {
-                AClone.set(i, j, AClone.get(i, j).subtract(r_kj.multiply(Q.get(i, k))));
+                W.set(i, j, W.get(i, j).subtract(dot.multiply(Q.get(i, k))));
             }
         }
     }

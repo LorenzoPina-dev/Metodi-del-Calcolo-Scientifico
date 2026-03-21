@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { Matrix } from "../src";
+import { Float64M, Matrix } from "../src";
 import { zeros } from "../src/init";
 
 /* ---------- LOAD JSON ---------- */
@@ -43,8 +43,8 @@ function assertClose(A: Matrix, B: Matrix, tol = 1e-8) {
 
     for (let i = 0; i < A.rows; i++) {
         for (let j = 0; j < A.cols; j++) {
-            const diff = Math.abs(A.get(i, j) - B.get(i, j));
-            if (diff > tol) {
+            const diff =A.get(i, j).subtract(B.get(i, j)).abs();
+            if (diff.greaterThan(new Float64M(tol))) {
                 console.log(`Mismatch at (${i},${j}): ${A.get(i, j)} vs ${B.get(i, j)}, diff = ${diff}`);
                 if(A.rows <= 10 && A.cols <= 10) // print matrices only if small
                 {console.log("Generated matrix:");
@@ -72,7 +72,7 @@ function checkProperties(name: string, A: Matrix) {
 
     if (name === "grcar") {
         for (let i = 0; i < A.rows; i++)
-            if (A.get(i, i) !== 1)
+            if (A.get(i, i).value !== 1)
                 throw new Error("Grcar diag error");
     }
 }

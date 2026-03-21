@@ -1,76 +1,73 @@
+// type/complex.ts
 import { INumeric } from "./interface";
 
-
 export class Complex implements INumeric<Complex> {
-  constructor(public readonly real: number, public readonly imag: number) {}
-  static get zero(): Complex { return new Complex(0, 0); }
-  static get one(): Complex { return new Complex(1, 0); }
+    constructor(
+        public readonly real: number,
+        public readonly imag: number
+    ) {}
 
+    static readonly zero: Complex = new Complex(0, 0);
+    static readonly one: Complex  = new Complex(1, 0);
 
-  // Operazioni matematiche esatte per numeri complessi
+    // ---- Magnitudine ----
+    get magnitude(): number { return Math.sqrt(this.real ** 2 + this.imag ** 2); }
 
-  // 1. Addizione
-  add(other: Complex): Complex {
-    return new Complex(this.real + other.real, this.imag + other.imag);
-  }
+    // ---- Factory ----
+    fromNumber(n: number): Complex { return new Complex(n, 0); }
+    /** toNumber restituisce il modulo (usato per norme e confronti scalari). */
+    toNumber(): number { return this.magnitude; }
 
-  // 2. Sottrazione
-  subtract(other: Complex): Complex {
-    return new Complex(this.real - other.real, this.imag - other.imag);
-  }
+    // ---- Aritmetica ----
+    negate(): Complex { return new Complex(-this.real, -this.imag); }
 
-  // 3. Moltiplicazione
-  multiply(other: Complex): Complex {
-    return new Complex(
-      this.real * other.real - this.imag * other.imag,
-      this.real * other.imag + this.imag * other.real
-    );
-  }
+    add(other: Complex): Complex {
+        return new Complex(this.real + other.real, this.imag + other.imag);
+    }
+    subtract(other: Complex): Complex {
+        return new Complex(this.real - other.real, this.imag - other.imag);
+    }
+    multiply(other: Complex): Complex {
+        return new Complex(
+            this.real * other.real - this.imag * other.imag,
+            this.real * other.imag + this.imag * other.real
+        );
+    }
+    divide(other: Complex): Complex {
+        const denom = other.real ** 2 + other.imag ** 2;
+        if (denom === 0) throw new Error("Complex: divisione per zero!");
+        return new Complex(
+            (this.real * other.real + this.imag * other.imag) / denom,
+            (this.imag * other.real - this.real * other.imag) / denom
+        );
+    }
 
-  // 4. Divisione
-  divide(other: Complex): Complex {
-    const denominator = other.real ** 2 + other.imag ** 2;
-    if (denominator === 0) throw new Error("Divisione per zero!");
-    
-    const realPart = (this.real * other.real + this.imag * other.imag) / denominator;
-    const imagPart = (this.imag * other.real - this.real * other.imag) / denominator;
-    return new Complex(realPart, imagPart);
-  }
+    // ---- Funzioni ----
+    abs(): Complex { return new Complex(this.magnitude, 0); }
+    sqrt(): Complex {
+        const r = this.magnitude;
+        const theta = Math.atan2(this.imag, this.real);
+        return new Complex(
+            Math.sqrt(r) * Math.cos(theta / 2),
+            Math.sqrt(r) * Math.sin(theta / 2)
+        );
+    }
+    round(): Complex {
+        return new Complex(Math.round(this.real), Math.round(this.imag));
+    }
 
-  // 5. Modulo (Magnitudine)
-  get magnitude(): number {
-    return Math.sqrt(this.real ** 2 + this.imag ** 2);
-  }
-  abs(): Complex {
-    return new Complex(this.magnitude, 0);
-  }
+    // ---- Comparazione (basata sul modulo) ----
+    greaterThan(other: Complex): boolean { return this.magnitude > other.magnitude; }
+    lessThan(other: Complex): boolean    { return this.magnitude < other.magnitude; }
+    equals(other: Complex): boolean      { return this.real === other.real && this.imag === other.imag; }
+    isNearZero(tol: number): boolean     { return this.magnitude < tol; }
 
-  // 6. Comparazione (basata sul modulo)
-  greaterThan(other: Complex): boolean {
-    return this.magnitude > other.magnitude;
-  }
+    // ---- Coniugato ----
+    conjugate(): Complex { return new Complex(this.real, -this.imag); }
 
-  lessThan(other: Complex): boolean {
-    return this.magnitude < other.magnitude;
-  }
-
-  equals(other: Complex): boolean {
-    return this.real === other.real && this.imag === other.imag;
-  }
-
-  round(): Complex {
-    return new Complex(Math.round(this.real), Math.round(this.imag));
-  }
-  sqrt(): Complex {
-    const r = this.magnitude;
-    const theta = Math.atan2(this.imag, this.real);
-    return new Complex(Math.sqrt(r) * Math.cos(theta / 2), Math.sqrt(r) * Math.sin(theta / 2));
-  } 
-
-
-  // Utility per stampare il numero
-  toString(): string {
-    const sign = this.imag >= 0 ? "+" : "-";
-    return `${this.real} ${sign} ${Math.abs(this.imag)}i`;
-  }
+    toString(): string {
+        if (this.imag === 0) return `${this.real}`;
+        const sign = this.imag >= 0 ? "+" : "-";
+        return `${this.real} ${sign} ${Math.abs(this.imag)}i`;
+    }
 }

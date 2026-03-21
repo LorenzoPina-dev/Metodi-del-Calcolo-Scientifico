@@ -1,137 +1,88 @@
+// ops/norm.ts
 import { Matrix } from "..";
-type NormType = "1" | "inf" | "fro" | "2";
-/**
- * Calcola la norma di una matrice o di un vettore.
- * @param type 1, 2, 'inf' (Infinito), 'fro' (Frobenius)
- */
-export function norm(this: Matrix, type: NormType = "2"): number {
-    const isVec = this.rows === 1 || this.cols === 1;
+import { INumeric } from "../type";
 
-    if (isVec) {
-        return normVector(this, type);
-    } else {
-        return normMatrix(this, type);
-    }
+type NormType = "1" | "2" | "inf" | "fro";
+
+/**
+ * Norma di una matrice o vettore.
+ * Restituisce sempre number (la norma è sempre reale e positiva).
+ * Per tipi complessi usa il modulo di ogni elemento (toNumber()).
+ */
+export function norm<T extends INumeric<T>>(this: Matrix<T>, type: NormType = "2"): number {
+    const isVec = this.rows === 1 || this.cols === 1;
+    return isVec ? normVector(this, type) : normMatrix(this, type);
 }
 
-// ============================================================================
-// NORME VETTORIALI
-// ============================================================================
-
-function normVector(A: Matrix, type: NormType): number {
+function normVector<T extends INumeric<T>>(A: Matrix<T>, type: NormType): number {
     const data = A.data;
     const len = data.length;
-    let res = 0;
 
     switch (type.toUpperCase()) {
-        case "1": // Somma dei valori assoluti
-            for (let i = 0; i <= len - 4; i += 4) {
-                res += Math.abs(data[i]) + Math.abs(data[i+1]) + Math.abs(data[i+2]) + Math.abs(data[i+3]);
-            }
-            for (let i = len % 4; i > 0; i--) res += Math.abs(data[len - i]);
-            return res;
-
-        case 'INF': // Massimo valore assoluto
+        case "1": {
+            let s = 0;
+            for (let i = 0; i < len; i++) s += data[i].abs().toNumber();
+            return s;
+        }
+        case "INF": {
             let max = 0;
             for (let i = 0; i < len; i++) {
-                const abs = Math.abs(data[i]);
-                if (abs > max) max = abs;
+                const v = data[i].abs().toNumber();
+                if (v > max) max = v;
             }
             return max;
-
-        case "2":
-        case 'FRO': // Per i vettori, la norma 2 e Frobenius coincidono
-            let sumSq = 0;
-            for (let i = 0; i <= len - 4; i += 4) {
-                sumSq += data[i]**2 + data[i+1]**2 + data[i+2]**2 + data[i+3]**2;
-            }
-            for (let i = len % 4; i > 0; i--) sumSq += data[len - i]**2;
-            return Math.sqrt(sumSq);
-
-        default:
-            throw new Error(`Norm type ${type} not supported for vectors.`);
-    }
-}
-
-// ============================================================================
-// NORME MATRICIALI
-// ============================================================================
-
-function normMatrix(A: Matrix, type:NormType): number {
-    switch (type.toUpperCase()) {
-        case "1":
-            return norm1Matrix(A); // Max somma assoluta delle colonne
-        case 'INF':
-            return normInfMatrix(A); // Max somma assoluta delle righe
-        case 'FRO':
-            return normFrobenius(A); // Radice della somma dei quadrati di tutti gli elementi
-        case "2":
-            // La norma 2 matriciale è il valore singolare massimo (richiede SVD)
-            // Per ora lanciamo un errore o usiamo un'approssimazione se SVD non è pronto
-            if ((A as any).svd) {
-                const s = (A as any).svd(true) as Matrix; // Richiede SVD economy
-                return s.data[0]; 
-            }
-            throw new Error("Matrix 2-norm requires SVD decomposition.");
-        default:
-            throw new Error(`Norm type ${type} not supported for matrices.`);
-    }
-}
-
-/**
- * Norma 1: Massimo della somma assoluta delle colonne.
- */
-function norm1Matrix(A: Matrix): number {
-    const { rows, cols } = A;
-    let max = 0;
-
-    for (let i = 0; i < cols; i++) {
-        let sum = 0;
-        let j = 0;
-
-        // loop unrolling
-        for (; j <= rows - 4; j += 4) {
-            sum += Math.abs(A.get(j, i)) + Math.abs(A.get(j + 1, i)) +
-                   Math.abs(A.get(j + 2, i)) + Math.abs(A.get(j + 3, i));
         }
-        for (; j < rows; j++) sum += Math.abs(A.get(j,i));
-        if (sum > max) max = sum;
+        case "2":
+        case "FRO": {
+            let sumSq = 0;
+            for (let i = 0; i < len; i++) {
+                const v = data[i].abs().toNumber();
+                sumSq += v * v;
+            }
+            return Math.sqrt(sumSq);
+        }
+        default:
+            throw new Error(`norm: tipo '${type}' non supportato per vettori.`);
     }
+}
 
+function normMatrix<T extends INumeric<T>>(A: Matrix<T>, type: NormType): number {
+    switch (type.toUpperCase()) {
+        case "1":   return norm1Matrix(A);
+        case "INF": return normInfMatrix(A);
+        case "FRO": return normFrobenius(A);
+        case "2":
+            throw new Error("norm 2 matriciale richiede SVD (non ancora implementato).");
+        default:
+            throw new Error(`norm: tipo '${type}' non supportato per matrici.`);
+    }
+}
+
+function norm1Matrix<T extends INumeric<T>>(A: Matrix<T>): number {
+    let max = 0;
+    for (let j = 0; j < A.cols; j++) {
+        let s = 0;
+        for (let i = 0; i < A.rows; i++) s += A.get(i, j).abs().toNumber();
+        if (s > max) max = s;
+    }
     return max;
 }
 
-/**
- * Norma Infinito: Massimo della somma assoluta delle righe.
- */
-function normInfMatrix(A: Matrix): number {
-    const { rows, cols } = A;
-    let maxRowSum = 0;
-
-    for (let i = 0; i < rows; i++) {
-        let rowSum = 0;
-        let j = 0;
-        for (; j <= cols - 4; j += 4) {
-            rowSum += Math.abs(A.get(i, j)) + Math.abs(A.get(i, j+1)) + 
-                      Math.abs(A.get(i, j+2)) + Math.abs(A.get(i, j+3));
-        }
-        for (; j < cols; j++) rowSum += Math.abs(A.get(i, j));
-        if (rowSum > maxRowSum) maxRowSum = rowSum;
+function normInfMatrix<T extends INumeric<T>>(A: Matrix<T>): number {
+    let max = 0;
+    for (let i = 0; i < A.rows; i++) {
+        let s = 0;
+        for (let j = 0; j < A.cols; j++) s += A.get(i, j).abs().toNumber();
+        if (s > max) max = s;
     }
-    return maxRowSum;
+    return max;
 }
 
-/**
- * Norma di Frobenius: sqrt(sum(diag(A' * A)))
- */
-function normFrobenius(A: Matrix): number {
-    const data = A.data;
-    const len = data.length;
+function normFrobenius<T extends INumeric<T>>(A: Matrix<T>): number {
     let sumSq = 0;
-    let i = 0;
-    for (; i <= len - 4; i += 4) {
-        sumSq += data[i]**2 + data[i+1]**2 + data[i+2]**2 + data[i+3]**2;
+    for (let i = 0; i < A.data.length; i++) {
+        const v = A.data[i].abs().toNumber();
+        sumSq += v * v;
     }
-    for (; i < len; i++) sumSq += data[i]**2;
     return Math.sqrt(sumSq);
 }

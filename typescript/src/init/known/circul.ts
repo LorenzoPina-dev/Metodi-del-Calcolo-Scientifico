@@ -1,22 +1,13 @@
-import { Matrix } from "../..";
+// init/known/circul.ts
+import { Float64M, Matrix } from "../..";
 import { zeros } from "../init";
 
-/**
- * Matrice Circolante
- * * Proprietà:
- * - Ogni riga è uno shift ciclico a destra della riga precedente.
- * - Diagonalizzata dalla Trasformata di Fourier Discreta (DFT).
- * * Funzionamento:
- * Prende un vettore v e lo usa come prima riga, traslando gli elementi
- * circolarmente per le righe successive tramite l'operatore modulo.
- */
-export function circul(v: number[]): Matrix {
+/** Matrice circolante: ogni riga è uno shift ciclico della precedente. */
+export function circul(v: number[]): Matrix<Float64M> {
     const n = v.length;
     const C = zeros(n, n);
-
     for (let i = 0; i < n; i++)
         for (let j = 0; j < n; j++)
-            C.set(i, j, v[(j - i + n) % n]);
-
+            C.setNum(i, j, v[(j - i + n) % n]);
     return C;
 }

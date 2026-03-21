@@ -1,151 +1,124 @@
+// ops/transform.ts
 import { Matrix } from "..";
+import { INumeric } from "../type";
 
-/**
- * Trasposizione: A.' in MATLAB.
- * Inverte righe con colonne.
- */
-export function transpose(this: Matrix): Matrix {
-    const out = new Matrix(this.cols, this.rows);
-    const Adat = this.data, Cdat = out.data;
+/** Trasposizione: A.' */
+export function transpose<T extends INumeric<T>>(this: Matrix<T>): Matrix<T> {
+    const out = this.like(this.cols, this.rows);
     const R = this.rows, C = this.cols;
-
     for (let i = 0; i < R; i++) {
         const iOff = i * C;
         for (let j = 0; j < C; j++) {
-            Cdat[j * R + i] = Adat[iOff + j];
+            out.data[j * R + i] = this.data[iOff + j];
         }
     }
     return out;
 }
 
-/**
- * Reshape: Cambia le dimensioni mantenendo il numero totale di elementi.
- * Molto efficiente perché condivide il buffer di memoria.
- */
-export function reshape(this: Matrix, r: number, c: number): Matrix {
+/** Reshape: cambia dimensioni mantenendo il numero di elementi. */
+export function reshape<T extends INumeric<T>>(this: Matrix<T>, r: number, c: number): Matrix<T> {
     if (r * c !== this.rows * this.cols) {
-        throw new Error("Reshape: total number of elements must not change.");
+        throw new Error("reshape: il numero totale di elementi deve rimanere invariato.");
     }
-    return new Matrix(r, c, this.data);
+    const Ctor = this.constructor as new (r: number, c: number, z: T, o: T, d: Array<T>) => Matrix<T>;
+    return new Ctor(r, c, this.zero, this.one, [...this.data]);
 }
 
-/**
- * Flip: Ribalta la matrice.
- * dim 1: Verticale (top-to-bottom) - MATLAB: flipud
- * dim 2: Orizzontale (left-to-right) - MATLAB: fliplr
- */
-export function flip(this: Matrix, dim: 1 | 2 = 1): Matrix {
-    const out = new Matrix(this.rows, this.cols);
-    const Adat = this.data, Cdat = out.data;
+/** Flip: dim=1 verticale (flipud), dim=2 orizzontale (fliplr). */
+export function flip<T extends INumeric<T>>(this: Matrix<T>, dim: 1 | 2 = 1): Matrix<T> {
+    const out = this.like(this.rows, this.cols);
     const R = this.rows, C = this.cols;
 
-    if (dim === 1) { // Flip Verticale
+    if (dim === 1) {
         for (let i = 0; i < R; i++) {
-            const targetRow = (R - 1 - i) * C;
-            const sourceRow = i * C;
-            Cdat.set(Adat.subarray(sourceRow, sourceRow + C), targetRow);
+            const src = i * C;
+            const dst = (R - 1 - i) * C;
+            for (let j = 0; j < C; j++) out.data[dst + j] = this.data[src + j];
         }
-    } else { // Flip Orizzontale
+    } else {
         for (let i = 0; i < R; i++) {
             const off = i * C;
             for (let j = 0; j < C; j++) {
-                Cdat[off + (C - 1 - j)] = Adat[off + j];
+                out.data[off + (C - 1 - j)] = this.data[off + j];
             }
         }
     }
     return out;
 }
 
-/**
- * Rot90: Ruota la matrice di 90 gradi in senso antiorario per k volte.
- */
-export function rot90(this: Matrix, k: number = 1): Matrix {
-    k = ((k % 4) + 4) % 4; // Normalizza k tra 0 e 3
-    if (k === 0) return this.clone() as Matrix;
-    
-    let res: Matrix;
+/** Rot90: ruota di 90° antiorario k volte. */
+export function rot90<T extends INumeric<T>>(this: Matrix<T>, k: number = 1): Matrix<T> {
+    k = ((k % 4) + 4) % 4;
+    if (k === 0) return this.clone();
+
+    if (k === 2) return flip.call(flip.call(this, 1), 2);
+
+    const out = this.like(this.cols, this.rows);
+    const R = this.rows, C = this.cols;
+
     if (k === 1) { // 90° antiorario
-        res = new Matrix(this.cols, this.rows);
-        for (let i = 0; i < this.rows; i++) {
-            for (let j = 0; j < this.cols; j++) {
-                res.data[(this.cols - 1 - j) * this.rows + i] = this.data[i * this.cols + j];
-            }
-        }
-    } else if (k === 2) { // 180°
-        res = this.flip(1).flip(2);
-    } else { // 270° antiorario (o 90° orario)
-        res = new Matrix(this.cols, this.rows);
-        for (let i = 0; i < this.rows; i++) {
-            for (let j = 0; j < this.cols; j++) {
-                res.data[j * this.rows + (this.rows - 1 - i)] = this.data[i * this.cols + j];
-            }
-        }
+        for (let i = 0; i < R; i++)
+            for (let j = 0; j < C; j++)
+                out.data[(C - 1 - j) * R + i] = this.data[i * C + j];
+    } else { // k === 3, 270° antiorario = 90° orario
+        for (let i = 0; i < R; i++)
+            for (let j = 0; j < C; j++)
+                out.data[j * R + (R - 1 - i)] = this.data[i * C + j];
     }
-    return res;
+    return out;
 }
 
-/**
- * Circshift: Scostamento circolare degli elementi.
- */
-export function circshift(this: Matrix, rShift: number, cShift: number): Matrix {
-    const out = new Matrix(this.rows, this.cols);
+/** Circshift: scostamento circolare. */
+export function circshift<T extends INumeric<T>>(this: Matrix<T>, rShift: number, cShift: number): Matrix<T> {
+    const out = this.like(this.rows, this.cols);
     const R = this.rows, C = this.cols;
-    
-    // Normalizzazione shift per evitare indici negativi o troppo grandi
     rShift = ((rShift % R) + R) % R;
     cShift = ((cShift % C) + C) % C;
-
     for (let i = 0; i < R; i++) {
         const newI = (i + rShift) % R;
         for (let j = 0; j < C; j++) {
-            const newJ = (j + cShift) % C;
-            out.data[newI * C + newJ] = this.data[i * C + j];
+            out.data[newI * C + ((j + cShift) % C)] = this.data[i * C + j];
         }
     }
     return out;
 }
 
-/**
- * Repmat: Replica la matrice in un pattern r x c.
- */
-export function repmat(this: Matrix, r: number, c: number): Matrix {
-    const out = new Matrix(this.rows * r, this.cols * c);
+/** Repmat: replica la matrice in un blocco r×c. */
+export function repmat<T extends INumeric<T>>(this: Matrix<T>, r: number, c: number): Matrix<T> {
+    const out = this.like(this.rows * r, this.cols * c);
     const R = this.rows, C = this.cols;
-    
-    for (let i = 0; i < r; i++) {
-        for (let j = 0; j < c; j++) {
-            // Posizionamento del blocco
-            for (let rBlock = 0; rBlock < R; rBlock++) {
-                const sourceOff = rBlock * C;
-                const targetOff = (i * R + rBlock) * out.cols + (j * C);
-                out.data.set(this.data.subarray(sourceOff, sourceOff + C), targetOff);
+    for (let br = 0; br < r; br++) {
+        for (let bc = 0; bc < c; bc++) {
+            for (let i = 0; i < R; i++) {
+                const srcOff = i * C;
+                const dstOff = (br * R + i) * out.cols + bc * C;
+                for (let j = 0; j < C; j++) {
+                    out.data[dstOff + j] = this.data[srcOff + j];
+                }
             }
         }
     }
     return out;
 }
 
-export function slice(this: Matrix, rowStart: number, rowEnd: number, colStart: number, colEnd: number): Matrix {
+/** Slice: estrae una sotto-matrice [rowStart..rowEnd) × [colStart..colEnd). */
+export function slice<T extends INumeric<T>>(
+    this: Matrix<T>,
+    rowStart: number,
+    rowEnd: number,
+    colStart: number,
+    colEnd: number
+): Matrix<T> {
     const nRows = rowEnd - rowStart;
     const nCols = colEnd - colStart;
-
-    if (nRows <= 0 || nCols <= 0) {
-        throw new Error("Slice dimensions must be positive");
-    }
-
-    const result = new Matrix(nRows, nCols);
-
-    const srcData = this.data;
-    const dstData = result.data;
-
-    let dstIndex = 0;
-
+    if (nRows <= 0 || nCols <= 0) throw new Error("slice: dimensioni non positive.");
+    const out = this.like(nRows, nCols);
+    let dst = 0;
     for (let i = rowStart; i < rowEnd; i++) {
-        const rowOffset = i * this.cols;
+        const rowOff = i * this.cols;
         for (let j = colStart; j < colEnd; j++) {
-            dstData[dstIndex++] = srcData[rowOffset + j];
+            out.data[dst++] = this.data[rowOff + j];
         }
     }
-
-    return result;
+    return out;
 }

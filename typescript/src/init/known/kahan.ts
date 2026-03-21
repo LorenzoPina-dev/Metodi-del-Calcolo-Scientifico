@@ -1,37 +1,28 @@
-import { Matrix } from "../..";
+// init/known/kahan.ts
+import { Float64M, Matrix } from "../..";
 import { zeros } from "../init";
 
 /**
- * Matrice di Kahan
- * * Descrizione:
- * Matrice triangolare superiore progettata per illustrare il fallimento del 
- * pivoting nella decomposizione QR per la stima del rango.
- * * Proprietà:
- * - Ha un numero di condizionamento elevato.
- * - Quasi singolare nonostante gli elementi sulla diagonale non siano minuscoli.
- * * Funzionamento:
- * Applica potenze di sin(alpha) sulla diagonale e calsola le sovradiagonali 
- * come -cos(alpha) * sin(alpha)^i.
+ * Matrice di Kahan: triangolare superiore, dimostra il fallimento del pivoting in QR.
  */
-export function kahan(n: number, m: number = n, alpha: number = 1.2, pert: number = 1e3): Matrix {
+export function kahan(
+    n: number,
+    m: number = n,
+    alpha: number = 1.2,
+    pert: number = 1e3
+): Matrix<Float64M> {
     const A = zeros(m, n);
     const s = Math.sin(alpha);
     const c = Math.cos(alpha);
     const eps = Number.EPSILON;
 
     for (let i = 0; i < m; i++) {
-        const si = Math.pow(s, i );
+        const si  = Math.pow(s, i);
         const csi = -c * si;
-
         for (let j = 0; j < n; j++) {
-            if (j === i) {
-                A.set(i, j, si + pert * eps * (Math.min(m, n) - i));
-            } else if (i < j) {
-                A.set(i, j, csi);
-            }
-            // sotto diagonale rimane zero
+            if (j === i)        A.setNum(i, j, si + pert * eps * (Math.min(m, n) - i));
+            else if (i < j)     A.setNum(i, j, csi);
         }
     }
-
     return A;
 }

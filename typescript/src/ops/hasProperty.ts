@@ -1,186 +1,164 @@
 // ops/hasProperty.ts
-
 import { Matrix } from "..";
+import { INumeric } from "../type";
 
-// ---------------- QUADRATA ----------------
-export function isSquare(this: Matrix): boolean {
+const EPS = 1e-10;
+
+// ---- QUADRATA ----
+export function isSquare<T extends INumeric<T>>(this: Matrix<T>): boolean {
     return this.rows === this.cols;
 }
 
-// ---------------- SIMMETRICA ----------------
-export function isSymmetric(this: Matrix, tol: number = 1e-10): boolean {
+// ---- SIMMETRICA ----
+export function isSymmetric<T extends INumeric<T>>(this: Matrix<T>, tol = EPS): boolean {
     if (!this.isSquare()) return false;
-
     for (let i = 0; i < this.rows; i++) {
         for (let j = i + 1; j < this.cols; j++) {
-            if (Math.abs(this.get(i, j) - this.get(j, i)) > tol) return false;
+            if (!this.get(i, j).subtract(this.get(j, i)).isNearZero(tol)) return false;
         }
     }
     return true;
 }
 
-// ---------------- TRIANGOLARI ----------------
-export function isUpperTriangular(this: Matrix, tol = 1e-10): boolean {
+// ---- TRIANGOLARI ----
+export function isUpperTriangular<T extends INumeric<T>>(this: Matrix<T>, tol = EPS): boolean {
     for (let i = 1; i < this.rows; i++) {
         for (let j = 0; j < i; j++) {
-            if (Math.abs(this.get(i, j)) > tol) return false;
+            if (!this.get(i, j).isNearZero(tol)) return false;
         }
     }
     return true;
 }
 
-export function isLowerTriangular(this: Matrix, tol = 1e-10): boolean {
+export function isLowerTriangular<T extends INumeric<T>>(this: Matrix<T>, tol = EPS): boolean {
     for (let i = 0; i < this.rows; i++) {
         for (let j = i + 1; j < this.cols; j++) {
-            if (Math.abs(this.get(i, j)) > tol) return false;
+            if (!this.get(i, j).isNearZero(tol)) return false;
         }
     }
     return true;
 }
 
-// ---------------- DIAGONALE ----------------
-export function isDiagonal(this: Matrix, tol = 1e-10): boolean {
+// ---- DIAGONALE ----
+export function isDiagonal<T extends INumeric<T>>(this: Matrix<T>, tol = EPS): boolean {
     for (let i = 0; i < this.rows; i++) {
         for (let j = 0; j < this.cols; j++) {
-            if (i !== j && Math.abs(this.get(i, j)) > tol) return false;
+            if (i !== j && !this.get(i, j).isNearZero(tol)) return false;
         }
     }
     return true;
 }
 
-// ---------------- IDENTITÀ ----------------
-export function isIdentity(this: Matrix, tol = 1e-10): boolean {
+// ---- IDENTITÀ ----
+export function isIdentity<T extends INumeric<T>>(this: Matrix<T>, tol = EPS): boolean {
     if (!this.isSquare()) return false;
-
     for (let i = 0; i < this.rows; i++) {
         for (let j = 0; j < this.cols; j++) {
-            const expected = i === j ? 1 : 0;
-            if (Math.abs(this.get(i, j) - expected) > tol) return false;
+            const expected = i === j ? this.one : this.zero;
+            if (!this.get(i, j).subtract(expected).isNearZero(tol)) return false;
         }
     }
     return true;
 }
 
-// ---------------- ORTOGONALE ----------------
-export function isOrthogonal(this: Matrix, tol = 1e-10): boolean {
+// ---- ORTOGONALE ----
+export function isOrthogonal<T extends INumeric<T>>(this: Matrix<T>, tol = EPS): boolean {
     if (!this.isSquare()) return false;
-
     const n = this.rows;
-
     for (let i = 0; i < n; i++) {
         for (let j = i; j < n; j++) {
-
-            let dot = 0;
+            let dot = this.zero;
             for (let k = 0; k < n; k++) {
-                dot += this.get(k, i) * this.get(k, j);
+                dot = dot.add(this.get(k, i).multiply(this.get(k, j)));
             }
-
-            const expected = i === j ? 1 : 0;
-            if (Math.abs(dot - expected) > tol) return false;
+            const expected = i === j ? this.one : this.zero;
+            if (!dot.subtract(expected).isNearZero(tol)) return false;
         }
     }
-
     return true;
 }
 
-// ---------------- ZERO ----------------
-export function isZeroMatrix(this: Matrix, tol = 1e-10): boolean {
+// ---- ZERO ----
+export function isZeroMatrix<T extends INumeric<T>>(this: Matrix<T>, tol = EPS): boolean {
     for (let i = 0; i < this.data.length; i++) {
-        if (Math.abs(this.data[i]) > tol) return false;
+        if (!this.data[i].isNearZero(tol)) return false;
     }
     return true;
 }
 
-// ================= NUOVI METODI =================
-
-// ---------------- INVERTIBILE ----------------
-export function isInvertible(this: Matrix, tol = 1e-12): boolean {
+// ---- INVERTIBILE ----
+export function isInvertible<T extends INumeric<T>>(this: Matrix<T>, tol = EPS): boolean {
     if (!this.isSquare()) return false;
-
     try {
         const { U } = Matrix.decomp.lup(this);
         for (let i = 0; i < U.rows; i++) {
-            if (Math.abs(U.get(i, i)) < tol) return false;
+            if (U.get(i, i).isNearZero(tol)) return false;
         }
         return true;
-    } catch {
-        return false;
-    }
+    } catch { return false; }
 }
 
-// ---------------- SINGOLARE ----------------
-export function isSingular(this: Matrix, tol = 1e-12): boolean {
+// ---- SINGOLARE ----
+export function isSingular<T extends INumeric<T>>(this: Matrix<T>, tol = EPS): boolean {
     return !this.isInvertible(tol);
 }
 
-// ---------------- POSITIVA DEFINITA ----------------
-export function isPositiveDefinite(this: Matrix): boolean {
+// ---- POSITIVA DEFINITA ----
+export function isPositiveDefinite<T extends INumeric<T>>(this: Matrix<T>): boolean {
     if (!this.isSymmetric()) return false;
-
-    try {
-        Matrix.decomp.cholesky(this);
-        return true;
-    } catch {
-        return false;
-    }
+    try { Matrix.decomp.cholesky(this); return true; }
+    catch { return false; }
 }
 
-// ---------------- SEMI-DEFINITA ----------------
-export function isPositiveSemiDefinite(this: Matrix, tol = 1e-12): boolean {
+// ---- SEMI-DEFINITA ----
+export function isPositiveSemiDefinite<T extends INumeric<T>>(this: Matrix<T>, tol = EPS): boolean {
     if (!this.isSymmetric()) return false;
-
-    const n = this.rows;
-
-    for (let i = 0; i < n; i++) {
-        if (this.get(i, i) < -tol) return false;
-    }
-
-    return true;
-}
-
-// ---------------- DOMINANTE DIAGONALE ----------------
-export function isDiagonallyDominant(this: Matrix): boolean {
     for (let i = 0; i < this.rows; i++) {
-        let sum = 0;
+        // diag element deve essere ≥ 0 (approssimazione)
+        if (this.get(i, i).negate().greaterThan(this.zero.fromNumber(tol))) return false;
+    }
+    return true;
+}
+
+// ---- DOMINANTE DIAGONALE ----
+export function isDiagonallyDominant<T extends INumeric<T>>(this: Matrix<T>): boolean {
+    for (let i = 0; i < this.rows; i++) {
+        let offSum = this.zero;
         for (let j = 0; j < this.cols; j++) {
-            if (i !== j) sum += Math.abs(this.get(i, j));
+            if (i !== j) offSum = offSum.add(this.get(i, j).abs());
         }
-
-        if (Math.abs(this.get(i, i)) < sum) return false;
+        if (this.get(i, i).abs().lessThan(offSum)) return false;
     }
     return true;
 }
 
-// ---------------- TRACCIA ZERO ----------------
-export function hasZeroTrace(this: Matrix, tol = 1e-10): boolean {
-    let t = 0;
-    const n = Math.min(this.rows, this.cols);
-
-    for (let i = 0; i < n; i++) {
-        t += this.get(i, i);
+// ---- TRACCIA ZERO ----
+export function hasZeroTrace<T extends INumeric<T>>(this: Matrix<T>, tol = EPS): boolean {
+    let t = this.zero;
+    for (let i = 0; i < Math.min(this.rows, this.cols); i++) {
+        t = t.add(this.get(i, i));
     }
-
-    return Math.abs(t) < tol;
+    return t.isNearZero(tol);
 }
 
-// ---------------- NORMA FINITA ----------------
-export function hasFiniteValues(this: Matrix): boolean {
+// ---- VALORI FINITI ----
+export function hasFiniteValues<T extends INumeric<T>>(this: Matrix<T>): boolean {
     for (let i = 0; i < this.data.length; i++) {
-        if (!Number.isFinite(this.data[i])) return false;
+        if (!Number.isFinite(this.data[i].toNumber())) return false;
     }
     return true;
 }
 
-// ---------------- MATRICE STOCASTICA ----------------
-export function isStochastic(this: Matrix, tol = 1e-10): boolean {
+// ---- STOCASTICA ----
+export function isStochastic<T extends INumeric<T>>(this: Matrix<T>, tol = EPS): boolean {
     for (let j = 0; j < this.cols; j++) {
-        let sum = 0;
+        let s = this.zero;
         for (let i = 0; i < this.rows; i++) {
             const v = this.get(i, j);
-            if (v < -tol) return false;
-            sum += v;
+            if (v.negate().greaterThan(this.zero.fromNumber(tol))) return false;
+            s = s.add(v);
         }
-        if (Math.abs(sum - 1) > tol) return false;
+        if (!s.subtract(this.one).isNearZero(tol)) return false;
     }
     return true;
 }

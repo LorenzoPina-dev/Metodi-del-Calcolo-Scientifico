@@ -1,3 +1,4 @@
+// init/index.ts
 export * from "./init";
 export * from "./random";
 export * from "./sparse";

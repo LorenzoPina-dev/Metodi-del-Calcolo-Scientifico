@@ -1,66 +1,47 @@
+// ops/subtract.ts
 import { Matrix } from "..";
+import { INumeric } from "../type";
 
-export function subtract(this: Matrix, B: Matrix | number): Matrix {
-    if (typeof B === "number") return subScalar(this, B as number);
-    
+export function subtract<T extends INumeric<T>>(this: Matrix<T>, B: Matrix<T> | number): Matrix<T> {
+    if (typeof B === "number") return subScalar(this, B);
     if (this.rows === B.rows && this.cols === B.cols) return subMatrix(this, B);
     if (B.rows === 1 && B.cols === this.cols) return subRowVector(this, B);
-    if (B.cols === 1 && B.rows === this.rows) return subColumnVector(this, B);
-
-    throw new Error(`Incompatible dimensions for subtract: ${this.rows}x${this.cols} and ${B.rows}x${B.cols}`);
+    if (B.cols === 1 && B.rows === this.rows) return subColVector(this, B);
+    throw new Error(`subtract: dimensioni incompatibili ${this.rows}×${this.cols} e ${B.rows}×${B.cols}`);
 }
 
-function subScalar(A: Matrix, scalar: number): Matrix {
-    const out = new Matrix(A.rows, A.cols);
-    const Adat = A.data, Cdat = out.data, len = Adat.length;
-    let i = 0;
-    for (; i <= len - 4; i += 4) {
-        Cdat[i] = Adat[i] - scalar; Cdat[i+1] = Adat[i+1] - scalar;
-        Cdat[i+2] = Adat[i+2] - scalar; Cdat[i+3] = Adat[i+3] - scalar;
-    }
-    for (; i < len; i++) Cdat[i] = Adat[i] - scalar;
+function subScalar<T extends INumeric<T>>(A: Matrix<T>, scalar: number): Matrix<T> {
+    const out = A.like(A.rows, A.cols);
+    const s = A.zero.fromNumber(scalar);
+    for (let i = 0; i < A.data.length; i++) out.data[i] = A.data[i].subtract(s);
     return out;
 }
 
-function subMatrix(A: Matrix, B: Matrix): Matrix {
-    const out = new Matrix(A.rows, A.cols);
-    const Adat = A.data, Bdat = B.data, Cdat = out.data, len = Adat.length;
-    let i = 0;
-    for (; i <= len - 4; i += 4) {
-        Cdat[i] = Adat[i] - Bdat[i]; Cdat[i+1] = Adat[i+1] - Bdat[i+1];
-        Cdat[i+2] = Adat[i+2] - Bdat[i+2]; Cdat[i+3] = Adat[i+3] - Bdat[i+3];
-    }
-    for (; i < len; i++) Cdat[i] = Adat[i] - Bdat[i];
+function subMatrix<T extends INumeric<T>>(A: Matrix<T>, B: Matrix<T>): Matrix<T> {
+    const out = A.like(A.rows, A.cols);
+    for (let i = 0; i < A.data.length; i++) out.data[i] = A.data[i].subtract(B.data[i]);
     return out;
 }
 
-function subRowVector(A: Matrix, B: Matrix): Matrix {
-    const out = new Matrix(A.rows, A.cols);
-    const Adat = A.data, Bdat = B.data, Cdat = out.data;
+function subRowVector<T extends INumeric<T>>(A: Matrix<T>, B: Matrix<T>): Matrix<T> {
+    const out = A.like(A.rows, A.cols);
     for (let i = 0; i < A.rows; i++) {
         const off = i * A.cols;
-        let j = 0;
-        for (; j <= A.cols - 4; j += 4) {
-            Cdat[off+j] = Adat[off+j] - Bdat[j]; Cdat[off+j+1] = Adat[off+j+1] - Bdat[j+1];
-            Cdat[off+j+2] = Adat[off+j+2] - Bdat[j+2]; Cdat[off+j+3] = Adat[off+j+3] - Bdat[j+3];
+        for (let j = 0; j < A.cols; j++) {
+            out.data[off + j] = A.data[off + j].subtract(B.data[j]);
         }
-        for (; j < A.cols; j++) Cdat[off+j] = Adat[off+j] - Bdat[j];
     }
     return out;
 }
 
-function subColumnVector(A: Matrix, B: Matrix): Matrix {
-    const out = new Matrix(A.rows, A.cols);
-    const Adat = A.data, Bdat = B.data, Cdat = out.data;
+function subColVector<T extends INumeric<T>>(A: Matrix<T>, B: Matrix<T>): Matrix<T> {
+    const out = A.like(A.rows, A.cols);
     for (let i = 0; i < A.rows; i++) {
         const off = i * A.cols;
-        const bVal = Bdat[i];
-        let j = 0;
-        for (; j <= A.cols - 4; j += 4) {
-            Cdat[off+j] = Adat[off+j] - bVal; Cdat[off+j+1] = Adat[off+j+1] - bVal;
-            Cdat[off+j+2] = Adat[off+j+2] - bVal; Cdat[off+j+3] = Adat[off+j+3] - bVal;
+        const bVal = B.data[i];
+        for (let j = 0; j < A.cols; j++) {
+            out.data[off + j] = A.data[off + j].subtract(bVal);
         }
-        for (; j < A.cols; j++) Cdat[off+j] = Adat[off+j] - bVal;
     }
     return out;
 }

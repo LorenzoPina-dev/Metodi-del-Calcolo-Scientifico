@@ -1,80 +1,60 @@
+// algoritm/inverse.ts
 import { Matrix } from "..";
-import { identity } from "../init";
-import { solve } from "../solver";
+import { INumeric } from "../type";
+import { solveLowerTriangular, solveUpperTriangular } from "../solver/triangular";
 
-export function inverseDiagonal(A: Matrix): Matrix {
-        const out = new Matrix(A.rows, A.cols);
-        for (let i = 0; i < A.rows; i++) {
-            const val = A.get(i, i);
-            if (Matrix.isZero(val)) throw new Error("Matrice diagonale singolare.");
-            out.set(i, i, 1 / val);
-        }
-        return out;
+/**
+ * Inversa di una matrice diagonale: reciproco di ogni elemento diagonale.
+ */
+export function inverseDiagonal<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
+    const out = A.like(A.rows, A.cols);
+    for (let i = 0; i < A.rows; i++) {
+        const v = A.get(i, i);
+        if (A.isZero(v)) throw new Error("inverseDiagonal: elemento diagonale nullo.");
+        out.set(i, i, A.one.divide(v));
     }
+    return out;
+}
 
-    
-    export function inverse(A: Matrix): Matrix {
-        return A.solve(identity(A.rows));
-    }
-   export function inverseOrthogonal(A: Matrix): Matrix {
-        // In una matrice ortogonale, l'inversa è la trasposta
-        return A.t();
-    }
+/**
+ * Inversa generale tramite LUP (risolve A*X = I colonna per colonna).
+ */
+export function inverse<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
+    return A.solve(A.likeIdentity(A.rows));
+}
 
-   export function pseudoInverse(A: Matrix): Matrix {
-        const At = A.t();
-        // (A^T * A)^-1 * A^T
-        return inverse(At.mul(A)).mul(At);
-    }
+/** Inversa di una matrice ortogonale: A^{-1} = A^T. */
+export function inverseOrthogonal<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
+    return A.t();
+}
 
-   export function inverseTriangular(A: Matrix, type: "upper" | "lower"): Matrix {
-        const n = A.rows;
-        const out = new Matrix(n, n);
-        const isUpper = type === "upper";
+/** Pseudo-inversa di Moore-Penrose: (A^T A)^{-1} A^T. */
+export function pseudoInverse<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
+    const At = A.t();
+    return inverse(At.mul(A)).mul(At);
+}
 
-        for (let j = 0; j < n; j++) {
-            // Risolviamo A * x = e_j (colonna j dell'identità)
-            if (isUpper) {
-                for (let i = n - 1; i >= 0; i--) {
-                    let sum = 0;
-                    for (let k = i + 1; k < n; k++) {
-                        sum += A.get(i, k) * out.get(k, j);
-                    }
-                    const diag = A.get(i, i);
-                    const b = (i === j ? 1 : 0);
-                    out.set(i, j, (b - sum) / diag);
-                }
-            } else {
-                for (let i = 0; i < n; i++) {
-                    let sum = 0;
-                    for (let k = 0; k < i; k++) {
-                        sum += A.get(i, k) * out.get(k, j);
-                    }
-                    const diag = A.get(i, i);
-                    const b = (i === j ? 1 : 0);
-                    out.set(i, j, (b - sum) / diag);
-                }
-            }
-        }
-        return out;
-    }
+/**
+ * Inversa di una matrice triangolare (superiore o inferiore).
+ * Risolve A * X = I sfruttando la struttura triangolare.
+ */
+export function inverseTriangular<T extends INumeric<T>>(
+    A: Matrix<T>,
+    type: "upper" | "lower"
+): Matrix<T> {
+    const I  = A.likeIdentity(A.rows);
+    if (type === "lower") return solveLowerTriangular(A, I);
+    return solveUpperTriangular(A, I);
+}
 
-    /**
-     * Analizza la matrice e sceglie l'algoritmo di inversione più efficiente.
-     * Ordine di controllo: Scalare -> Diagonale -> Ortogonale -> Triangolare -> Quadrata -> Rettangolare.
-     */
-   export function smartInverse(A: Matrix): Matrix {
-        // 1. Caso Rettangolare (Pseudo-inversa)
-        if (!A.isSquare()) return pseudoInverse(A);
-        if (A.isDiagonal()) return inverseDiagonal(A);
-        if (A.isUpperTriangular()) return inverseTriangular(A,"upper");
-        if (A.isLowerTriangular()) return inverseTriangular(A,"lower");
-
-        // 4. Controllo Ortogonale (A^T * A = I)
-        // Nota: Questo controllo costa O(n^3), ha senso solo se prevedi molte matrici di rotazione.
-        // Se la matrice è grande, conviene saltarlo o farlo solo su richiesta.
-        if (A.isOrthogonal()) return A.t();
-
-        // 5. Fallback: Metodo Diretto LUP
-        return inverse(A);
-    }
+/**
+ * Sceglie automaticamente l'algoritmo di inversione più efficiente.
+ */
+export function smartInverse<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
+    if (!A.isSquare())          return pseudoInverse(A);
+    if (A.isDiagonal())         return inverseDiagonal(A);
+    if (A.isUpperTriangular())  return inverseTriangular(A, "upper");
+    if (A.isLowerTriangular())  return inverseTriangular(A, "lower");
+    if (A.isOrthogonal())       return inverseOrthogonal(A);
+    return inverse(A);
+}

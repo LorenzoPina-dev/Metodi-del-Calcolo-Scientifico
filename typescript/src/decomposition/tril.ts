@@ -1,15 +1,14 @@
+// decomposition/tril.ts
 import { Matrix } from "..";
-import { zeros } from "../init";
+import { INumeric } from "../type";
 
-// Estrae la parte triangolare superiore della matrice con offset k
-export function tril(A: Matrix, k = 0): Matrix {
-    const n = A.rows;
-    const m = A.cols;
-    const B = zeros(n, m);
+/** Estrae la parte triangolare inferiore (con offset k, default 0). */
+export function tril<T extends INumeric<T>>(A: Matrix<T>, k = 0): Matrix<T> {
+    const out = A.like(A.rows, A.cols);
     for (let i = 0; i < A.rows; i++) {
-        for (let j = 0; j <= i; j++) {
-            B.set(i, j, A.get(i, j));
+        for (let j = 0; j <= Math.min(i + k, A.cols - 1); j++) {
+            if (j >= 0) out.set(i, j, A.get(i, j));
         }
     }
-    return B;
+    return out;
 }

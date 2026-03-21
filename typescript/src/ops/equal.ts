@@ -1,11 +1,11 @@
+// ops/equal.ts
 import { Matrix } from "..";
+import { INumeric } from "../type";
 
-export function equal(A: Matrix, B: Matrix, tol: number = Matrix.EPS): boolean {
+export function equal<T extends INumeric<T>>(A: Matrix<T>, B: Matrix<T>, tol: number = 1e-10): boolean {
     if (A.rows !== B.rows || A.cols !== B.cols) return false;
-    for (let i = 0; i < A.rows; i++) {
-        for (let j = 0; j < A.cols; j++) {
-            if (Math.abs(A.get(i, j) - B.get(i, j)) > tol) return false;
-        }
+    for (let i = 0; i < A.data.length; i++) {
+        if (!A.data[i].subtract(B.data[i]).isNearZero(tol)) return false;
     }
     return true;
 }

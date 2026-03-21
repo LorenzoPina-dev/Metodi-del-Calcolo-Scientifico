@@ -1,33 +1,39 @@
-import { Matrix } from "../..";
-import { zeros } from "../init";
+// init/known/smoke.ts
+//
+// NOTA: La matrice "Smoke" originale di MATLAB ha autovalori complessi
+// (radici n-esime dell'unità sulla diagonale).
+// Qui vengono fornite DUE varianti:
+//   - smokeReal  → usa solo la parte reale cos(2πk/n)  [Matrix<Float64M>]
+//   - smokeComplex → usa i numeri complessi esatti       [Matrix<Complex>]
+//
+import { Float64M, Complex, Matrix } from "../..";
+import { zeros, zerosLike } from "../init";
 
 /**
- * Matrice "Smoke" (Versione Reale)
- * * Descrizione:
- * Una matrice complessa con radici dell'unità sulla diagonale e 1 sulla sovradiagonale.
- * * Nota Critica:
- * La versione MATLAB gallery('smoke') è complessa. Questa implementazione usa solo la parte reale 
- * cos(2π*i/n). Per una fedeltà totale, servirebbe il supporto ai numeri complessi.
- * * Funzionamento:
- * 1. Diagonale: cos(2*PI * i / n).
- * 2. Sovradiagonale: 1.0.
- * 3. Elemento d'angolo (n, 1): 1.0 per "chiudere" il ciclo.
+ * Variante reale (approssimazione): diagonale = cos(2π*i/n), sopra-diagonale = 1.
  */
-
-//SONO COMPLESSI, VA RIVISTO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-export function smoke(n: number): Matrix {
-    const H = zeros(n, n); 
-
+export function smoke(n: number): Matrix<Float64M> {
+    const A = zeros(n, n);
     for (let i = 0; i < n; i++) {
-        const diagValue = Math.cos((2 * Math.PI * i) / n);
-        H.set(i, i, diagValue);
-
-        if (i < n) {
-            H.set(i, i, 1.0);
-        }
+        A.setNum(i, i, Math.cos((2 * Math.PI * i) / n));
+        if (i < n - 1) A.setNum(i, i + 1, 1);
     }
-    // Elemento circolante nell'angolo in basso a sinistra
-    if (n > 1) H.set(n - 1, 0, 1.0);
-    
-    return H;
+    if (n > 1) A.setNum(n - 1, 0, 1);   // elemento circolante
+    return A;
+}
+
+/**
+ * Variante complessa esatta: diagonale = e^{2πi·k/n}, sopra-diagonale = 1.
+ */
+export function smokeComplex(n: number): Matrix<Complex> {
+    const z = Complex.zero;
+    const o = Complex.one;
+    const A = zerosLike<Complex>(n, n, z, o);
+    for (let i = 0; i < n; i++) {
+        const angle = (2 * Math.PI * i) / n;
+        A.set(i, i, new Complex(Math.cos(angle), Math.sin(angle)));
+        if (i < n - 1) A.set(i, i + 1, o);
+    }
+    if (n > 1) A.set(n - 1, 0, o);
+    return A;
 }

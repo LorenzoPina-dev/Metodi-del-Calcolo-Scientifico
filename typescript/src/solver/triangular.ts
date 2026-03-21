@@ -1,33 +1,59 @@
+// solver/triangular.ts
 import { Matrix } from "..";
-import { zeros } from "../init";
+import { INumeric } from "../type";
 
-export function solveLowerTriangular(L: Matrix, b: Matrix): Matrix {
+/**
+ * Risolve L * x = b (sostituzione in avanti).
+ * L deve essere triangolare inferiore quadrata.
+ */
+export function solveLowerTriangular<T extends INumeric<T>>(
+    L: Matrix<T>,
+    b: Matrix<T>
+): Matrix<T> {
     const N = L.rows;
-    if (N !== L.cols) throw new Error("Matrix L must be square");
-    if (L.sub(Matrix.tril(L)).totalSum() > 1e-15) throw new Error("Matrix L is not lower triangular");
-    const x = zeros(N, b.cols);
-    for (let j = 0; j < b.cols; j++) {
-        x.set(0, j, b.get(0, j) / L.get(0, 0));
+    if (N !== L.cols) throw new Error("solveLowerTriangular: L deve essere quadrata.");
+
+    const x = b.like(N, b.cols);
+
+    for (let col = 0; col < b.cols; col++) {
+        // x[0] = b[0] / L[0,0]
+        x.set(0, col, b.get(0, col).divide(L.get(0, 0)));
+
         for (let i = 1; i < N; i++) {
-            let sum = 0;
-            for (let k = 0; k < i; k++) sum += L.get(i, k) * x.get(k, j);
-            x.set(i, j, (b.get(i, j) - sum) / L.get(i, i));
+            let s = b.get(i, col);
+            for (let k = 0; k < i; k++) {
+                s = s.subtract(L.get(i, k).multiply(x.get(k, col)));
+            }
+            x.set(i, col, s.divide(L.get(i, i)));
         }
     }
     return x;
 }
-export function solveUpperTriangular(U: Matrix, b: Matrix): Matrix { 
+
+/**
+ * Risolve U * x = b (sostituzione all'indietro).
+ * U deve essere triangolare superiore quadrata.
+ */
+export function solveUpperTriangular<T extends INumeric<T>>(
+    U: Matrix<T>,
+    b: Matrix<T>
+): Matrix<T> {
     const N = U.rows;
-        if (N !== U.cols) throw new Error("Matrix U must be square");
-        if (U.sub(Matrix.triu(U)).totalSum() > 1e-15) throw new Error("Matrix U is not upper triangular");
-        const x = zeros(N, b.cols);
-        for (let j = 0; j < b.cols; j++) {
-            x.set(N - 1, j, b.get(N - 1, j) / U.get(N - 1, N - 1));
-            for (let i = N - 2; i >= 0; i--) {
-                let sum = 0;
-                for (let k = i + 1; k < N; k++) sum += U.get(i, k) * x.get(k, j);
-                x.set(i, j, (b.get(i, j) - sum) / U.get(i, i));
+    if (N !== U.cols) throw new Error("solveUpperTriangular: U deve essere quadrata.");
+
+    const x = b.like(N, b.cols);
+
+    for (let col = 0; col < b.cols; col++) {
+        // x[N-1] = b[N-1] / U[N-1, N-1]
+        x.set(N - 1, col, b.get(N - 1, col).divide(U.get(N - 1, N - 1)));
+
+        for (let i = N - 2; i >= 0; i--) {
+            let s = b.get(i, col);
+            for (let k = i + 1; k < N; k++) {
+                s = s.subtract(U.get(i, k).multiply(x.get(k, col)));
             }
+            x.set(i, col, s.divide(U.get(i, i)));
         }
-        return x;
+    }
+    return x;
 }

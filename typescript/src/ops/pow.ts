@@ -1,28 +1,22 @@
-import  { Matrix }  from "..";
+// ops/pow.ts
+import { Matrix } from "..";
+import { INumeric } from "../type";
 
-/**
- * Matrice elevata a potenza (mpower). Solo per matrici quadrate.
- */
-export function pow(this: Matrix, exp: number): Matrix {
-    if (this.rows !== this.cols) {
-        throw new Error("Matrix power is only defined for square matrices.");
-    }
-    if (!Number.isInteger(exp) || exp < 0) {
-        throw new Error("Only non-negative integer exponents are supported currently.");
-    }
+/** Potenza matriciale (mpower): A^exp, solo quadrate e esponente intero ≥ 0. */
+export function pow<T extends INumeric<T>>(this: Matrix<T>, exp: number): Matrix<T> {
+    if (this.rows !== this.cols) throw new Error("pow: solo matrici quadrate.");
+    if (!Number.isInteger(exp) || exp < 0) throw new Error("pow: solo esponenti interi non negativi.");
+    if (exp === 0) return this.likeIdentity(this.rows);
+    if (exp === 1) return this.clone();
 
-    if (exp === 0) return Matrix.identity(this.rows);
-    if (exp === 1) return this.clone(); // Supponendo esista un metodo copy
-
-    let res = Matrix.identity(this.rows);
-    let base: Matrix = this.clone();
-
-    while (exp > 0) {
-        if (exp % 2 === 1) {
-            res = res.mul(base);
-        }
+    // Esponenziazione rapida (binary exponentiation)
+    let res = this.likeIdentity(this.rows);
+    let base = this.clone();
+    let e = exp;
+    while (e > 0) {
+        if (e % 2 === 1) res = res.mul(base);
         base = base.mul(base);
-        exp = Math.floor(exp / 2);
+        e = Math.floor(e / 2);
     }
     return res;
 }

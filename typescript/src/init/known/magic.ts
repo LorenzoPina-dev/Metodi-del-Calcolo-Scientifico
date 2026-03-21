@@ -1,4 +1,4 @@
-import { Matrix } from "../..";
+import { Float64M, Matrix } from "../..";
 import { zeros } from "../init";
 
 /**
@@ -33,7 +33,7 @@ function magicOdd(n: number): Matrix {
         const ni = (i - 1 + n) % n;
         const nj = (j + 1) % n;
 
-        if (M.get(ni, nj) !== 0) {
+        if (M.get(ni, nj).value !== 0) {
             i = (i + 1) % n;
         } else {
             i = ni;
@@ -79,9 +79,9 @@ function magicSinglyEven(n: number): Matrix {
             const a = A.get(i, j);
 
             M.set(i, j, a);
-            M.set(i + p, j, a + 3 * p * p);
-            M.set(i, j + p, a + 2 * p * p);
-            M.set(i + p, j + p, a + p * p);
+            M.set(i + p, j, a.add(new Float64M( 3 * p * p)));
+            M.set(i, j + p, a.add(new Float64M(2 * p * p)));
+            M.set(i + p, j + p, a.add(new Float64M(p * p)));
         }
     }
 

@@ -1,34 +1,31 @@
+// decomposition/lu.ts
 import { Matrix } from "..";
-import { identity } from "../init";
-import { Float64M } from "../type";
+import { INumeric } from "../type";
 
-export function lu(A: Matrix): { L: Matrix; U: Matrix } {
+/**
+ * Decomposizione LU senza pivoting.
+ * Attenzione: può fallire su pivot nulli; preferire lup() per robustezza.
+ */
+export function lu<T extends INumeric<T>>(A: Matrix<T>): { L: Matrix<T>; U: Matrix<T> } {
     const n = A.rows;
-    if (n !== A.cols) throw new Error("Matrix must be square");
+    if (n !== A.cols) throw new Error("lu: matrice non quadrata.");
 
     const U = A.clone();
-    const L = Matrix.identity(n);
-
-    const EPS = 1e-12;
+    const L = A.likeIdentity(n);
+    const EPS_TOL = 1e-12;
 
     for (let k = 0; k < n; k++) {
         const pivot = U.get(k, k);
-
-        // Controllo pivot
-        if (pivot.abs().lessThan(new Float64M(EPS))) {
-            throw new Error("Zero or near-zero pivot encountered. Use LUP instead.");
+        if (pivot.isNearZero(EPS_TOL)) {
+            throw new Error("lu: pivot nullo o quasi-nullo alla colonna " + k + ". Usare lup().");
         }
 
         for (let i = k + 1; i < n; i++) {
             const factor = U.get(i, k).divide(pivot);
-
-            // Salva il moltiplicatore in L
             L.set(i, k, factor);
 
-            // Aggiorna riga di U
             for (let j = k; j < n; j++) {
-                const value = U.get(i, j).subtract(factor.multiply(U.get(k, j)));
-                U.set(i, j, value);
+                U.set(i, j, U.get(i, j).subtract(factor.multiply(U.get(k, j))));
             }
         }
     }
