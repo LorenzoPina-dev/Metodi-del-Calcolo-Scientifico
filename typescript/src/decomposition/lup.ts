@@ -9,10 +9,10 @@ export function lup(A: Matrix): { L: Matrix; U: Matrix; P: number[], swaps: numb
     let swaps = 0;
 
     for (let i = 0; i < n; i++) {
-        let max = i, maxVal = Math.abs(AClone.get(i, i));
+        let max = i, maxVal = AClone.get(i, i).abs();
         for (let k = i + 1; k < n; k++) {
-            const val = Math.abs(AClone.get(k, i));
-            if (val > maxVal) { maxVal = val; max = k; }
+            const val = AClone.get(k, i).abs();
+            if (val.greaterThan(maxVal)) { maxVal = val; max = k; }
         }
         if (Matrix.isZero(maxVal)) throw new Error("Singular matrix");
         if (max !== i) {
@@ -25,9 +25,9 @@ export function lup(A: Matrix): { L: Matrix; U: Matrix; P: number[], swaps: numb
             [P[i], P[max]] = [P[max], P[i]];
         }
         for (let j = i + 1; j < n; j++) {
-            const factor = AClone.get(j, i) / AClone.get(i, i);
+            const factor = AClone.get(j, i).divide(AClone.get(i, i));
             AClone.set(j, i, factor);
-            for (let k = i + 1; k < n; k++) AClone.set(j, k, AClone.get(j, k) - factor * AClone.get(i, k));
+            for (let k = i + 1; k < n; k++) AClone.set(j, k, AClone.get(j, k).subtract(factor.multiply(AClone.get(i, k))));
         }
     }
     const L = identity(n), U = zeros(n, n);

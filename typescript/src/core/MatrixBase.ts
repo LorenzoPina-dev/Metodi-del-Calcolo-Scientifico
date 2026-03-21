@@ -2,15 +2,15 @@
 
 import { INumeric } from "../type";
 
-export class MatrixBase {
-    data: Array<INumeric>;
+export class MatrixBase< T extends INumeric<T> > {
+    data: Array<T>;
     rows: number;
     cols: number;
 
-    constructor(rows: number, cols: number, data?: Array<INumeric>) {
+    constructor(rows: number, cols: number, data?: Array<T>) {
         this.rows = rows;
         this.cols = cols;
-        this.data = data ?? new Array<INumeric>(rows * cols);
+        this.data = data ?? new Array<T>(rows * cols);
     }
 
     // ---------------- INDEX ----------------
@@ -18,20 +18,21 @@ export class MatrixBase {
         return i * this.cols + j;
     }
 
-    get(i: number, j: number): INumeric {
+    get(i: number, j: number): T {
         return this.data[this.idx(i, j)];
     }
 
-    set(i: number, j: number, v: INumeric): void {
+    set(i: number, j: number, v: T): void {
         this.data[this.idx(i, j)] = v;
     }
 
     // ---------------- CONSTANTS ----------------
     static EPS = 1e-10;
 
-    static isZero(x: INumeric): boolean {
-        return abs(x) < MatrixBase.EPS;
+    static isZero(x: INumeric<any>): boolean {
+        return x.abs().lessThan(MatrixBase.EPS);
     }
+
 
     // ---------------- COPY ----------------
     clone(): this {

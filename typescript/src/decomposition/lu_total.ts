@@ -1,4 +1,5 @@
 import { Matrix } from "..";
+import { Float64M } from "../type";
 
 export function luPivoting(A: Matrix): { P: Matrix; L: Matrix; U: Matrix } {
     const n = A.rows;
@@ -8,22 +9,22 @@ export function luPivoting(A: Matrix): { P: Matrix; L: Matrix; U: Matrix } {
     const L = Matrix.identity(n);
     const P = Matrix.identity(n);
 
-    const EPS = 1e-12;
+    const EPS = new Float64M(1e-12);
 
     for (let k = 0; k < n; k++) {
         // Pivoting (parziale)
         let pivotRow = k;
-        let max = Math.abs(U.get(k, k));
+        let max = U.get(k, k).abs();
 
         for (let i = k + 1; i < n; i++) {
-            const val = Math.abs(U.get(i, k));
-            if (val > max) {
+            const val = U.get(i, k).abs();
+            if (val.greaterThan(max)) {
                 max = val;
                 pivotRow = i;
             }
         }
 
-        if (max < EPS) throw new Error("Matrix is singular or nearly singular");
+        if (max.lessThan(EPS)) throw new Error("Matrix is singular or nearly singular");
 
         // Swap righe
         if (pivotRow !== k) {
@@ -40,11 +41,11 @@ export function luPivoting(A: Matrix): { P: Matrix; L: Matrix; U: Matrix } {
 
         // Eliminazione
         for (let i = k + 1; i < n; i++) {
-            const factor = U.get(i, k) / U.get(k, k);
+            const factor = U.get(i, k).divide(U.get(k, k));
             L.set(i, k, factor);
 
             for (let j = k; j < n; j++) {
-                U.set(i, j, U.get(i, j) - factor * U.get(k, j));
+                U.set(i, j, U.get(i, j).subtract(factor.multiply(U.get(k, j))));
             }
         }
     }

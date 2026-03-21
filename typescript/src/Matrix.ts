@@ -31,8 +31,9 @@ import { hankel, random, sparse, toeplitz, vander } from "./init";
 import * as propOps from "./ops/hasProperty";
 import { tril, triu } from "./decomposition";
 import { equal } from "./ops/equal";
+import { INumeric } from "./type";
 
-export class Matrix extends MatrixBase {
+export class Matrix extends MatrixBase<INumeric<any>> {
 
     equals(B: Matrix, tol: number = Matrix.EPS): boolean {
         return equal(this, B, tol);
@@ -87,11 +88,12 @@ export class Matrix extends MatrixBase {
     }
 
     trace() {
-        let t = 0;
+        let t : INumeric = INumeric.zero;
         const n = Math.min(this.rows, this.cols);
 
         for (let i = 0; i < n; i++) {
-            t += this.get(i, i);
+            t = t.add(this.get(i, i));
+            // t +=this.get(i, i);
         }
 
         return t;

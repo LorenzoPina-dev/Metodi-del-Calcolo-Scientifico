@@ -1,30 +1,42 @@
 import { INumeric } from ".";
 
-export class Rational implements INumeric{
+export class Rational implements INumeric<Rational>{
   public readonly num: bigint;
   public readonly den: bigint;
+  static get zero(): Rational { return new Rational(0); }
+  static get one(): Rational { return new Rational(1); }
 
-  constructor(num: bigint | number, den: bigint | number = 1n) {
+
+  constructor(num: bigint | number, den: bigint | number = 1) {
     let n = BigInt(num);
     let d = BigInt(den);
 
-    if (d === 0n) throw new Error("Il denominatore non può essere zero.");
+    if (d === BigInt(0)) throw new Error("Il denominatore non può essere zero.");
 
     // Portiamo il segno sempre al numeratore
-    if (d < 0n) {
+    if (d < 0) {
       n = -n;
       d = -d;
     }
 
     // Semplifichiamo la frazione (MCD)
-    const common = Rational.gcd(n < 0n ? -n : n, d);
+    const common = Rational.gcd(n < 0 ? -n : n, d);
     this.num = n / common;
     this.den = d / common;
+  }
+  abs(): Rational {
+    throw new Error("Method not implemented.");
+  }
+  sqrt(): Rational {
+    throw new Error("Method not implemented.");
+  }
+  round(): Rational {
+    throw new Error("Method not implemented.");
   }
 
   // Algoritmo di Euclide per il Massimo Comune Divisore
   private static gcd(a: bigint, b: bigint): bigint {
-    while (b > 0n) {
+    while (b > 0) {
       a %= b;
       [a, b] = [b, a];
     }
@@ -68,7 +80,7 @@ export class Rational implements INumeric{
   }
   // Output testuale
   toString(): string {
-    return this.den === 1n ? `${this.num}` : `${this.num}/${this.den}`;
+    return this.den === BigInt(1) ? `${this.num}` : `${this.num}/${this.den}`;
   }
 
   // Conversione in decimale (qui l'arrotondamento è inevitabile, ma lo fai solo alla fine)

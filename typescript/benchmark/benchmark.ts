@@ -1,4 +1,5 @@
-import fs from "fs";
+
+import { writeFileSync } from "node:fs";
 import { Matrix } from "../src"; // Assicurati che il path punti alla tua classe Matrix
 
 // Configurazione
@@ -57,5 +58,5 @@ for (const n of testSizes) {
 }
 
 // Salva tutto in JSON
-fs.writeFileSync("benchmark_results.json", JSON.stringify(results, null, 2));
+writeFileSync("benchmark_results.json", JSON.stringify(results, null, 2));
 console.log("Benchmark completato. Risultati salvati in benchmark_results.json");

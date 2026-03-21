@@ -1,10 +1,13 @@
-export interface INumeric {
-  add(other: INumeric): INumeric;
-  subtract(other: INumeric): INumeric;
-  multiply(other: INumeric): INumeric;
-  divide(other: INumeric): INumeric;
-  greaterThan(other: INumeric): boolean;
-  lessThan(other: INumeric): boolean;
-  equals(other: INumeric): boolean;
+export interface INumeric<T> {
+  abs(): T;
+  sqrt(): T;
+  round(): T;
+  add(other: T): T;
+  subtract(other: T): T;
+  multiply(other: T): T;
+  divide(other: T): T;
+  greaterThan(other: T): boolean;
+  lessThan(other: T): boolean;
+  equals(other: T): boolean;
   toString(): string;
 }

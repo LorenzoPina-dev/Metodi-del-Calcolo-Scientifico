@@ -10,29 +10,29 @@ export function qr(A: Matrix): { Q: Matrix; R: Matrix } {
 
     for (let k = 0; k < n; k++) {
         // r_kk = ||a_k||
-        let norm = 0;
+        let norm = INumeric.zero;
         for (let i = 0; i < m; i++) {
             const val = AClone.get(i, k);
-            norm += val * val;
+            norm = norm.add(val.multiply(val));
         }
-        norm = Math.sqrt(norm);
-        if (norm === 0) throw new Error("Matrix has linearly dependent columns");
+        norm = norm.sqrt();
+        if (norm.equals(INumeric.zero)) throw new Error("Matrix has linearly dependent columns");
         R.set(k, k, norm);
 
         // q_k = a_k / r_kk
         for (let i = 0; i < m; i++) {
-            Q.set(i, k, AClone.get(i, k) / norm);
+            Q.set(i, k, AClone.get(i, k).divide(norm));
         }
 
         // Gram-Schmidt: aggiornamento colonne successive
         for (let j = k + 1; j < n; j++) {
-            let r_kj = 0;
+            let r_kj = INumeric.zero;
             for (let i = 0; i < m; i++) {
-                r_kj += Q.get(i, k) * AClone.get(i, j);
+                r_kj = r_kj.add(Q.get(i, k).multiply(AClone.get(i, j)));
             }
             R.set(k, j, r_kj);
             for (let i = 0; i < m; i++) {
-                AClone.set(i, j, AClone.get(i, j) - r_kj * Q.get(i, k));
+                AClone.set(i, j, AClone.get(i, j).subtract(r_kj.multiply(Q.get(i, k))));
             }
         }
     }

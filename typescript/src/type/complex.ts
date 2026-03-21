@@ -1,7 +1,13 @@
-import { INumeric } from ".";
+import { INumeric } from "./interface";
 
-export class Complex implements INumeric {
+
+export class Complex implements INumeric<Complex> {
   constructor(public readonly real: number, public readonly imag: number) {}
+  static get zero(): Complex { return new Complex(0, 0); }
+  static get one(): Complex { return new Complex(1, 0); }
+
+
+  // Operazioni matematiche esatte per numeri complessi
 
   // 1. Addizione
   add(other: Complex): Complex {
@@ -35,8 +41,8 @@ export class Complex implements INumeric {
   get magnitude(): number {
     return Math.sqrt(this.real ** 2 + this.imag ** 2);
   }
-  abs(): number {
-    return this.magnitude;
+  abs(): Complex {
+    return new Complex(this.magnitude, 0);
   }
 
   // 6. Comparazione (basata sul modulo)
@@ -51,6 +57,16 @@ export class Complex implements INumeric {
   equals(other: Complex): boolean {
     return this.real === other.real && this.imag === other.imag;
   }
+
+  round(): Complex {
+    return new Complex(Math.round(this.real), Math.round(this.imag));
+  }
+  sqrt(): Complex {
+    const r = this.magnitude;
+    const theta = Math.atan2(this.imag, this.real);
+    return new Complex(Math.sqrt(r) * Math.cos(theta / 2), Math.sqrt(r) * Math.sin(theta / 2));
+  } 
+
 
   // Utility per stampare il numero
   toString(): string {
