@@ -69,32 +69,32 @@ export class Matrix<T extends INumeric<T> = Float64M> extends MatrixBase<T> {
     equals(B: Matrix<T>, tol = MatrixBase.EPS): boolean { return equal(this, B, tol); }
 
     // -------- ARITMETICA --------
-    add(B: Matrix<T> | number): Matrix<T>  { return addOps.add.call(this, B); }
-    sub(B: Matrix<T> | number): Matrix<T>  { return subOps.subtract.call(this, B); }
-    mul(B: Matrix<T> | number): Matrix<T>  { return mulOps.multiply.call(this, B); }
-    pow(exp: number): Matrix<T>            { return pow.call(this, exp); }
+    add(B: Matrix<T> | number): Matrix<T>  { return (addOps.add<T>).call(this, B); }
+    sub(B: Matrix<T> | number): Matrix<T>  { return (subOps.subtract<T>).call(this, B); }
+    mul(B: Matrix<T> | number): Matrix<T>  { return (mulOps.multiply<T>).call(this, B); }
+    pow(exp: number): Matrix<T>            { return (pow<T>).call(this, exp); }
 
     // -------- DOT OPS --------
-    dotMul(B: Matrix<T> | number): Matrix<T>   { return dotOps.dotMultiply.call(this, B); }
-    dotDiv(B: Matrix<T> | number): Matrix<T>   { return dotOps.dotDivide.call(this, B); }
-    dotPow(e: number | Matrix<T>): Matrix<T>   { return dotOps.dotPow.call(this, e); }
+    dotMul(B: Matrix<T> | number): Matrix<T>   { return (dotOps.dotMultiply<T>).call(this, B); }
+    dotDiv(B: Matrix<T> | number): Matrix<T>   { return (dotOps.dotDivide<T>).call(this, B); }
+    dotPow(e: number | Matrix<T>): Matrix<T>   { return (dotOps.dotPow<T>).call(this, e); }
 
     // -------- ALGEBRA --------
     det(): T                   { return det(this); }
     norm(type?: any): number   { return norm.call(this, type); }
     inv(): Matrix<T>           { return smartInverse(this); }
     inverse(): Matrix<T>       { return this.inv(); }
-    trace(): T                 { return unaryOps.trace.call(this); }
-    totalSum(): T              { return addOps.totalSum.call(this); }
+    trace(): T                 { return (unaryOps.trace<T>).call(this); }
+    totalSum(): T              { return (addOps.totalSum<T>).call(this); }
 
     // -------- STATISTICHE --------
-    sum(dim: 1 | 2 = 1): Matrix<T>  { return statOps.sum.call(this, dim); }
-    max(dim: 1 | 2 = 1)             { return statOps.max.call(this, dim); }
-    min(dim: 1 | 2 = 1)             { return statOps.min.call(this, dim); }
-    mean(dim: 1 | 2 = 1): Matrix<T> { return statOps.mean.call(this, dim); }
+    sum(dim: 1 | 2 = 1): Matrix<T>  { return (statOps.sum<T>).call(this, dim); }
+    max(dim: 1 | 2 = 1)             { return (statOps.max<T>).call(this, dim); }
+    min(dim: 1 | 2 = 1)             { return (statOps.min<T>).call(this, dim); }
+    mean(dim: 1 | 2 = 1): Matrix<T> { return (statOps.mean<T>).call(this, dim); }
 
     // -------- TRASFORMAZIONI --------
-    t(): Matrix<T>                                                    { return transOps.transpose.call(this); }
+    t(): Matrix<T>                                                    { return (transOps.transpose<T>).call(this); }
     /**
      * Trasposta coniugata / Hermitian adjoint: A^H.
      *   - Per Float64M e Rational: uguale a t() (i reali sono auto-coniugati).
@@ -103,23 +103,23 @@ export class Matrix<T extends INumeric<T> = Float64M> extends MatrixBase<T> {
      * anche su matrici complesse.
      */
     override ct(): this                                               { return super.ct(); }
-    reshape(r: number, c: number): Matrix<T>                          { return transOps.reshape.call(this, r, c); }
-    repmat(r: number, c: number): Matrix<T>                           { return transOps.repmat.call(this, r, c); }
-    flip(dim: 1 | 2 = 1): Matrix<T>                                   { return transOps.flip.call(this, dim); }
-    rot90(k = 1): Matrix<T>                                           { return transOps.rot90.call(this, k); }
-    slice(rs: number, re: number, cs: number, ce: number): Matrix<T>  { return transOps.slice.call(this, rs, re, cs, ce); }
+    reshape(r: number, c: number): Matrix<T>                          { return (transOps.reshape<T>).call(this, r, c); }
+    repmat(r: number, c: number): Matrix<T>                           { return (transOps.repmat<T>).call(this, r, c); }
+    flip(dim: 1 | 2 = 1): Matrix<T>                                   { return (transOps.flip<T>).call(this, dim); }
+    rot90(k = 1): Matrix<T>                                           { return (transOps.rot90<T>).call(this, k); }
+    slice(rs: number, re: number, cs: number, ce: number): Matrix<T>  { return (transOps.slice<T>).call(this, rs, re, cs, ce); }
 
     // -------- UNARIE --------
-    abs(): Matrix<T>    { return unaryOps.abs.call(this); }
-    sqrt(): Matrix<T>   { return unaryOps.sqrt.call(this); }
-    round(): Matrix<T>  { return unaryOps.round.call(this); }
-    negate(): Matrix<T> { return unaryOps.negate.call(this); }
-    exp(): Matrix<T>    { return unaryOps.exp.call(this); }
-    floor(): Matrix<T>  { return unaryOps.floor.call(this); }
-    ceil(): Matrix<T>   { return unaryOps.ceil.call(this); }
-    sin(): Matrix<T>    { return unaryOps.sin.call(this); }
-    cos(): Matrix<T>    { return unaryOps.cos.call(this); }
-    tan(): Matrix<T>    { return unaryOps.tan.call(this); }
+    abs(): Matrix<T>    { return (unaryOps.abs<T>).call(this); }
+    sqrt(): Matrix<T>   { return (unaryOps.sqrt<T>).call(this); }
+    round(): Matrix<T>  { return (unaryOps.round<T>).call(this); }
+    negate(): Matrix<T> { return (unaryOps.negate<T>).call(this); }
+    exp(): Matrix<T>    { return (unaryOps.exp<T>).call(this); }
+    floor(): Matrix<T>  { return (unaryOps.floor<T>).call(this); }
+    ceil(): Matrix<T>   { return (unaryOps.ceil<T>).call(this); }
+    sin(): Matrix<T>    { return (unaryOps.sin<T>).call(this); }
+    cos(): Matrix<T>    { return (unaryOps.cos<T>).call(this); }
+    tan(): Matrix<T>    { return (unaryOps.tan<T>).call(this); }
 
     // -------- PROPRIETÀ --------
     isSquare(): boolean                           { return propOps.isSquare.call(this); }
@@ -140,7 +140,7 @@ export class Matrix<T extends INumeric<T> = Float64M> extends MatrixBase<T> {
     isStochastic(tol?: number): boolean           { return propOps.isStochastic.call(this, tol); }
 
     // -------- SOLVER --------
-    solve(b: Matrix<T>, method = "LUP"): Matrix<T> { return solver.solve.call(this, b, method); }
+    solve(b: Matrix<T>, method = "LUP"): Matrix<T> { return (solver.solve<T>).call(this, b, method); }
 
     // -------- STATIC NAMESPACE --------
     static readonly solver  = solver;

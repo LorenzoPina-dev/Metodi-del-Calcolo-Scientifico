@@ -46,7 +46,7 @@ export function flip<T extends INumeric<T>>(this: Matrix<T>, dim: 1 | 2 = 1): Ma
 export function rot90<T extends INumeric<T>>(this: Matrix<T>, k = 1): Matrix<T> {
     k = ((k % 4) + 4) % 4;
     if (k === 0) return this.clone();
-    if (k === 2) return flip.call(flip.call(this, 1), 2);
+    if (k === 2) return (flip<T>).call((flip<T>).call(this, 1), 2);
 
     const R = this.rows, C = this.cols;
     const ad = this.data;

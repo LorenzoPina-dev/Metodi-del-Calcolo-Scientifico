@@ -15,7 +15,7 @@ export function sum<T extends INumeric<T>>(this: Matrix<T>, dim: 1 | 2 = 1): Mat
 }
 
 export function mean<T extends INumeric<T>>(this: Matrix<T>, dim: 1 | 2 = 1): Matrix<T> {
-    const s = sum.call(this, dim);
+    const s = (sum<T>).call(this, dim);
     const div = this.zero.fromNumber(dim === 1 ? this.rows : this.cols);
     const d = s.data, len = d.length;
     for (let i = 0; i < len; i++) d[i] = d[i].divide(div);

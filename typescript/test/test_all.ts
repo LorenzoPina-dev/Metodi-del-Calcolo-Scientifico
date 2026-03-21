@@ -1,12 +1,12 @@
 
-import * as fs from "fs";
+import {readFileSync, readdirSync} from "fs";
 import * as path from "path";
 import { Float64M, Matrix } from "../src";
 import { zeros } from "../src/init";
 
 /* ---------- LOAD JSON ---------- */
 function loadJSON(file: string): { matrix: Matrix; params: any } {
-    const text = fs.readFileSync(file, "utf-8");
+    const text = readFileSync(file, "utf-8");
     const obj = JSON.parse(text);
 
     let A: Matrix;
@@ -132,11 +132,11 @@ function generateMatrix(name: string, params: any): Matrix {
 
 /* ---------- MAIN TEST ---------- */
 function runTests(baseDir: string) {
-    const matrixTypes = fs.readdirSync(baseDir);
+    const matrixTypes = readdirSync(baseDir);
 
     for (const name of matrixTypes) {
         const dir = path.join(baseDir, name);
-        const files = fs.readdirSync(dir).filter(f => f.endsWith(".json"));
+        const files = readdirSync(dir).filter((f: string) => f.endsWith(".json"));
 
         for (const file of files) {
             if(name === "wathen") {
