@@ -1,4 +1,4 @@
-import { Matrix } from "../..";
+import { Float64M, Matrix } from "../..";
 import { qr } from "../../decomposition";
 import { zeros } from "../init";
 
@@ -21,13 +21,12 @@ export function randsvd(n: number): Matrix {
     let { Q: U } = qr(G1);
     let { Q: V } = qr(G2);
 
-    let sigma = new Float64Array(n);
+    let sigma = new Array<Float64M>(n);
     for (let i = 0; i < n; i++) {
-        sigma[i] = Math.pow(kappa, -i / (n - 1));
+        sigma[i] =new Float64M( Math.pow(kappa, -i / (n - 1)));
     }
-    
     // A = U * diag(sigma) * V^T
-    const SigmaMat = new Matrix(n, n, sigma); // Assumendo costruttore per diagonale
+    const SigmaMat = Matrix.diagFromArray(sigma); // Assumendo costruttore per diagonale
     return U.mul(SigmaMat.mul(V.t()));
 }
 

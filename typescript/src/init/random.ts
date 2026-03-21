@@ -1,4 +1,6 @@
+// init/random.ts
 import { Matrix } from "..";
+import { Float64M } from "../type";
 import { zeros } from "./init";
 
 type RandomOptions = {
@@ -9,23 +11,22 @@ type RandomOptions = {
     std?: number;
 };
 
-export function random(n: number, m: number, opts: RandomOptions = {}): Matrix {
+/** Genera una matrice Float64M con valori casuali. */
+export function random(n: number, m: number, opts: RandomOptions = {}): Matrix{
     const { type = "uniform", min = 0, max = 1, mean = 0, std = 1 } = opts;
-
     const M = zeros(n, m);
 
     for (let i = 0; i < n * m; i++) {
+        let v: number;
         if (type === "uniform") {
-            M.data[i] = min + (max - min) * Math.random();
+            v = min + (max - min) * Math.random();
         } else if (type === "normal") {
-            const u1 = Math.random();
-            const u2 = Math.random();
-            const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
-            M.data[i] = mean + std * z;
-        } else if (type === "int") {
-            M.data[i] = Math.floor(min + Math.random() * (max - min + 1));
+            const u1 = Math.random(), u2 = Math.random();
+            v = mean + std * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+        } else { // "int"
+            v = Math.floor(min + Math.random() * (max - min + 1));
         }
+        M.data[i] = new Float64M(v);
     }
-
     return M;
 }
