@@ -1,21 +1,36 @@
 {
-  "scripts": {
-    "test":    "vitest",
-    "build":   "tsc --project tsconfig.build.json",
-    "example": "node dist/examples/usage.js"
+  "name": "numeric-matrix",
+  "version": "1.0.0",
+  "description": "Generic matrix library for Float64, Complex and exact Rational arithmetic.",
+  "author": "",
+  "license": "SEE LICENSE IN LICENSE",
+  "type": "module",
+  "main":   "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types":  "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import":  "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "types":   "./dist/types/index.d.ts"
+    }
   },
-  "dependencies": {
-    "fs": "^0.0.1-security",
-    "jsdom": "^29.0.0",
-    "plotly.js": "^3.4.0",
-    "plotly.js-dist": "^3.4.0",
-    "vitest": "^4.1.0"
+  "files": ["dist/", "README.md", "LICENSE", "CHANGELOG.md"],
+  "scripts": {
+    "build":          "npm run build:esm && npm run build:cjs && npm run build:types",
+    "build:esm":      "tsc --project tsconfig.esm.json",
+    "build:cjs":      "tsc --project tsconfig.cjs.json",
+    "build:types":    "tsc --project tsconfig.types.json",
+    "test":           "vitest",
+    "example":        "npx tsx src/examples/usage.ts",
+    "benchmark":      "npx tsx --expose-gc benchmark/benchmark.ts",
+    "benchmark:simple":"npx tsx --expose-gc benchmark/benchmark_simple.ts",
+    "prepublishOnly": "npm run build && npm test"
   },
   "devDependencies": {
-    "@types/jsdom": "^28.0.1",
     "@types/node": "^25.5.0",
-    "@types/plotly.js": "^3.0.10",
-    "tsx": "^4.19.4",
-    "typescript": "^5.7.3"
+    "tsx":         "^4.19.4",
+    "typescript":  "^5.7.3",
+    "vitest":      "^4.1.0"
   }
 }

@@ -7,9 +7,9 @@ export * from "./qr";
 export * from "./tril";
 export * from "./triu";
 export * from "./dlu";
+export * from "./ldlt";
 
 // ---- Alias backward-compatible ----
-// luPivoting: come lup ma restituisce P come Matrix (matrice di permutazione)
 import { lup } from "./lup";
 import { INumeric } from "../type";
 import { Matrix } from "..";

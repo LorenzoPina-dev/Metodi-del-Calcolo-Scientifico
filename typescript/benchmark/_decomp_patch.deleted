@@ -1,0 +1,10 @@
+        const decomps: [string, () => void][] = [
+            ["LUP",        () => Matrix.decomp.lup(A)],
+            ["LU",         () => Matrix.decomp.lu(A)],
+            ["LU total",   () => Matrix.decomp.lu_total(A)],
+            ["QR",         () => Matrix.decomp.qr(A)],
+            ["Cholesky",   () => Matrix.decomp.cholesky(Aspd)],
+            ["LDLT",       () => Matrix.decomp.ldlt(Aspd)],
+            ["tril",       () => Matrix.tril(A)],
+            ["triu",       () => Matrix.triu(A)],
+        ];

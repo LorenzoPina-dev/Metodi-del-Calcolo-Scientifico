@@ -23,22 +23,16 @@ export function solve<T extends INumeric<T>>(
         case "CHOLESKY": {
             const { L } = Matrix.decomp.cholesky(this);
             const y = Matrix.solver.solveLowerTriangular(L, b);
-            // L^H (trasposta coniugata di L)
             return Matrix.solver.solveUpperTriangular(L.ct(), y);
+        }
+
+        case "LDLT": {
+            // A simmetrica (non necessariamente SPD) → LDL^T
+            return Matrix.decomp.solveLDLT(this, b);
         }
 
         case "QR": {
             const { Q, R } = Matrix.decomp.qr(this);
-            //
-            // A = Q*R  →  R*x = Q^H * b
-            //
-            // Q^H è la trasposta coniugata (adjoint):
-            //   - Per matrici reali  (Float64M, Rational): Q^H = Q^T = Q^{-1}
-            //   - Per matrici complesse: Q^H = conj(Q)^T = Q^{-1}
-            //
-            // SBAGLIATO per complessi:  Q.t()   (trasposta semplice)
-            // CORRETTO per tutti i tipi: Q.ct()  (trasposta coniugata)
-            //
             return Matrix.solver.solveUpperTriangular(R, Q.ct().mul(b));
         }
 
@@ -48,12 +42,26 @@ export function solve<T extends INumeric<T>>(
         case "GAUSS-SEIDEL":
             return Matrix.solver.solveGaussSeidelMat(this, b);
 
+        case "SOR": {
+            // Default ω=1.5 — l'utente può chiamare solveSOR direttamente
+            // per un valore personalizzato
+            return Matrix.solver.solveSOR(this, b, 1.5);
+        }
+
+        case "CG":
+        case "CONJUGATE-GRADIENT": {
+            // Richiede A SPD
+            return Matrix.solver.solveCG(this, b);
+        }
+
         default:
-            throw new Error(`solve: metodo '${method}' non riconosciuto.`);
+            throw new Error(
+                `solve: metodo '${method}' non riconosciuto. ` +
+                `Disponibili: LU, LUP, QR, CHOLESKY, LDLT, JACOBI, GAUSS-SEIDEL, SOR, CG`
+            );
     }
 }
 
-/** Riordina le righe di b secondo P (P[i] = riga sorgente per la riga i). */
 function _permute<T extends INumeric<T>>(b: Matrix<T>, P: number[]): Matrix<T> {
     const n = b.rows, BC = b.cols;
     const out = b.like(n, BC);

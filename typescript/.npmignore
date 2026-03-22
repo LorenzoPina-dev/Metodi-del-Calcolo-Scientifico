@@ -1,0 +1,26 @@
+# Sorgenti TypeScript (i consumatori usano dist/)
+src/
+benchmark/
+test/
+
+# File generati da benchmark
+benchmark_results.json
+matrix_full_benchmark_results.json
+matrix_benchmark_visual.html
+
+# Dati di verità MATLAB (solo per sviluppo)
+truth_matrices/
+
+# Script Python
+plot_results.py
+
+# Config di sviluppo
+tsconfig*.json
+.eslintrc*
+.prettierrc*
+vitest.config*
+
+# Roba di sistema
+.git/
+.gitignore
+node_modules/

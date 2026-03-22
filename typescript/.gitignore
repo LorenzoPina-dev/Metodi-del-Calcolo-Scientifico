@@ -1,0 +1,21 @@
+node_modules/
+dist/
+
+# Output build intermedi
+*.tsbuildinfo
+
+# Output benchmark (generati, non versionare)
+benchmark/benchmark_results.json
+benchmark/benchmark_report.html
+benchmark_results.json
+matrix_full_benchmark_results.json
+matrix_benchmark_visual.html
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Coverage
+coverage/

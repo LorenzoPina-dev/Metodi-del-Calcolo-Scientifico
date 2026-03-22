@@ -1,0 +1,76 @@
+Academic and Research Use License (ARUL) — Version 1.0
+
+Copyright (c) 2025
+
+DEFINIZIONI
+-----------
+"Software" indica il codice sorgente, il codice compilato, la documentazione
+e qualsiasi altro materiale distribuito con questa licenza.
+
+"Utilizzo Accademico" indica la ricerca scientifica, la didattica universitaria
+o scolastica, lo studio personale, la preparazione di tesi, articoli, relazioni
+o qualsiasi altra attività svolta senza fine di lucro diretto.
+
+"Utilizzo Commerciale" indica qualsiasi utilizzo del Software, anche parziale,
+all'interno di prodotti, servizi, librerie o pipeline con scopo di lucro, oppure
+da parte di entità commerciali nell'esercizio della propria attività.
+
+CONCESSIONE DI LICENZA
+----------------------
+È concesso gratuitamente il permesso, a chiunque ottenga una copia del Software,
+di utilizzarlo per Utilizzo Accademico, inclusi i diritti di:
+
+  - copiare, modificare, fondere, pubblicare e distribuire il Software o sue
+    versioni modificate, purché tale distribuzione avvenga con questa stessa
+    licenza e a titolo gratuito;
+  - citare il Software in pubblicazioni scientifiche, con appropriata
+    attribuzione all'autore originale.
+
+Il Utilizzo Commerciale del Software, in tutto o in parte, è espressamente
+vietato senza previa autorizzazione scritta dell'autore.
+
+ESCLUSIONE DI GARANZIA — CLAUSOLA DI NON RESPONSABILITÀ
+---------------------------------------------------------
+IL SOFTWARE È FORNITO "COSÌ COM'È" (AS IS), SENZA GARANZIA DI ALCUN TIPO,
+ESPRESSA O IMPLICITA, IVI COMPRESE, IN VIA ESEMPLIFICATIVA E NON ESAUSTIVA,
+LE GARANZIE DI COMMERCIABILITÀ, IDONEITÀ A UNO SCOPO PARTICOLARE E NON
+VIOLAZIONE DI DIRITTI DI TERZI.
+
+L'AUTORE NON FORNISCE ALCUNA GARANZIA RIGUARDO A:
+
+  - la correttezza numerica, la stabilità o la precisione dei risultati
+    prodotti dal Software;
+  - l'adeguatezza del Software per applicazioni di calcolo scientifico,
+    ingegneristico, finanziario, medico o di altro tipo in cui la precisione
+    dei risultati sia di importanza critica;
+  - l'assenza di bug, errori di arrotondamento, instabilità numerica o
+    comportamenti inattesi in condizioni limite (matrici mal condizionate,
+    denominatori esplosivi, perdita di precisione floating-point, ecc.);
+  - la continuità dello sviluppo, la compatibilità con versioni future o
+    la manutenzione a lungo termine del Software.
+
+IN NESSUN CASO L'AUTORE O I CONTRIBUTORI POTRANNO ESSERE RITENUTI
+RESPONSABILI PER QUALSIASI DANNO DIRETTO, INDIRETTO, INCIDENTALE, SPECIALE,
+ESEMPLARE O CONSEQUENZIALE (IVI COMPRESI, A TITOLO ESEMPLIFICATIVO: PERDITA DI
+DATI, INTERRUZIONE DELL'ATTIVITÀ, PERDITE ECONOMICHE O DANNI ALLA SALUTE)
+DERIVANTI DALL'UTILIZZO O DALL'IMPOSSIBILITÀ DI UTILIZZO DEL SOFTWARE, ANCHE
+SE L'AUTORE È STATO AVVISATO DELLA POSSIBILITÀ DI TALI DANNI.
+
+L'UTILIZZO DEL SOFTWARE IN CONTESTI CHE RICHIEDANO ALTA AFFIDABILITÀ —
+QUALI, SENZA LIMITAZIONE, SISTEMI DI CONTROLLO, DISPOSITIVI MEDICI,
+INFRASTRUTTURE CRITICHE O APPLICAZIONI DI SICUREZZA — È EFFETTUATO
+INTERAMENTE A RISCHIO DELL'UTILIZZATORE.
+
+ATTRIBUZIONE
+------------
+Qualsiasi lavoro accademico, pubblicazione o presentazione che utilizzi
+il Software o sia basato su di esso deve includere un'appropriata citazione:
+
+  "Questo lavoro utilizza la libreria numeric-matrix
+   (https://github.com/[autore]/numeric-matrix), distribuita sotto
+   Academic and Research Use License (ARUL) v1.0."
+
+LEGGE APPLICABILE
+-----------------
+Questa licenza è disciplinata dalla legge italiana. Per qualsiasi controversia
+è competente in via esclusiva il foro del luogo di residenza dell'autore.

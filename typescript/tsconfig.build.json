@@ -1,12 +1,9 @@
 {
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "module": "CommonJS",
-    "moduleResolution": "Node",
-    "outDir": "./dist",
-    "declaration": true,
-    "declarationMap": true
-  },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  "_comment": "Usa 'npm run build' che esegue i tre tsconfig specializzati in sequenza.",
+  "references": [
+    { "path": "./tsconfig.esm.json"   },
+    { "path": "./tsconfig.cjs.json"   },
+    { "path": "./tsconfig.types.json" }
+  ],
+  "files": []
 }
