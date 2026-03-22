@@ -36,13 +36,7 @@ function _normVec<T extends INumeric<T>>(A: Matrix<T>, type: NormType): number {
         case "FRO": {
             let ss = 0;
             if (f64) {
-                let i = 0;
-                for (; i <= len - 4; i += 4) {
-                    const a = (d[i] as any).value, b = (d[i+1] as any).value;
-                    const c = (d[i+2] as any).value, e = (d[i+3] as any).value;
-                    ss += a*a + b*b + c*c + e*e;
-                }
-                for (; i < len; i++) { const v = (d[i] as any).value; ss += v*v; }
+                for (let i = 0; i < len; i++) { const v = (d[i] as any).value; ss += v*v; }
             } else {
                 for (let i = 0; i < len; i++) { const v = d[i].abs().toNumber(); ss += v*v; }
             }
@@ -91,13 +85,7 @@ function _normInf<T extends INumeric<T>>(A: Matrix<T>): number {
         const off = i * C;
         let s = 0;
         if (f64) {
-            let j = 0;
-            for (; j <= C - 4; j += 4) {
-                const a = (d[off+j] as any).value, b = (d[off+j+1] as any).value;
-                const c = (d[off+j+2] as any).value, e = (d[off+j+3] as any).value;
-                s += (a < 0 ? -a : a) + (b < 0 ? -b : b) + (c < 0 ? -c : c) + (e < 0 ? -e : e);
-            }
-            for (; j < C; j++) { const v = (d[off+j] as any).value; s += v < 0 ? -v : v; }
+            for (let j = 0; j < C; j++) { const v = (d[off+j] as any).value; s += v < 0 ? -v : v; }
         } else {
             for (let j = 0; j < C; j++) s += A.get(i, j).abs().toNumber();
         }
@@ -111,13 +99,7 @@ function _normFro<T extends INumeric<T>>(A: Matrix<T>): number {
     const f64 = A.isFloat64;
     let ss = 0;
     if (f64) {
-        let i = 0;
-        for (; i <= len - 4; i += 4) {
-            const a = (d[i] as any).value, b = (d[i+1] as any).value;
-            const c = (d[i+2] as any).value, e = (d[i+3] as any).value;
-            ss += a*a + b*b + c*c + e*e;
-        }
-        for (; i < len; i++) { const v = (d[i] as any).value; ss += v*v; }
+        for (let i = 0; i < len; i++) { const v = (d[i] as any).value; ss += v*v; }
     } else {
         for (let i = 0; i < len; i++) { const v = d[i].abs().toNumber(); ss += v*v; }
     }

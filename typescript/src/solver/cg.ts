@@ -95,14 +95,7 @@ function _matvecF64(ad: any[], p: Float64Array, out: Float64Array, n: number): v
     for (let i = 0; i < n; i++) {
         const off = i * n;
         let s = 0;
-        let j = 0;
-        for (; j <= n - 4; j += 4) {
-            s += (ad[off+j] as any).value * p[j]
-               + (ad[off+j+1] as any).value * p[j+1]
-               + (ad[off+j+2] as any).value * p[j+2]
-               + (ad[off+j+3] as any).value * p[j+3];
-        }
-        for (; j < n; j++) s += (ad[off+j] as any).value * p[j];
+        for (let j = 0; j < n; j++) s += (ad[off+j] as any).value * p[j];
         out[i] = s;
     }
 }

@@ -38,7 +38,7 @@ export class Matrix<T extends INumeric<T> = Float64M> extends MatrixBase<T> {
             super(rows, cols, f0, Float64M.one as unknown as T);
         } else if (zeroOrData instanceof Float64Array || Array.isArray(zeroOrData)) {
             const f0 = Float64M.zero as unknown as T;
-            const wrapped = Array.from(zeroOrData as ArrayLike<number>)
+            const wrapped = Array.from(zeroOrData.values())
                 .map(v => new Float64M(v) as unknown as T);
             super(rows, cols, f0, Float64M.one as unknown as T, wrapped);
         } else {

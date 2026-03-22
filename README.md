@@ -658,19 +658,8 @@ Il file `confronti.benchmark.ts` testa tutti i metodi di risoluzione su 6 tipi d
 
 ## 💡 Tecniche di Ottimizzazione Implementate
 
-### 1. Loop Unrolling ×4
-Ogni hot loop processa 4 elementi per iterazione, riducendo i branch del contatore e aumentando il throughput della CPU:
-```typescript
-for (; i <= len - 4; i += 4) {
-    out[i]   = fn(a[i]);
-    out[i+1] = fn(a[i+1]);
-    out[i+2] = fn(a[i+2]);
-    out[i+3] = fn(a[i+3]);
-}
-for (; i < len; i++) out[i] = fn(a[i]);  // residuo
-```
 
-### 2. Ordine i-k-j per la Moltiplicazione
+### 1. Ordine i-k-j per la Moltiplicazione
 L'ordine naturale `i-j-k` causa cache miss su `B` a ogni cambio di `j`. L'ordine `i-k-j` carica `A[i,k]` una volta e scorre `B[k,:]` sequenzialmente:
 ```typescript
 for (let k = 0; k < K; k++) {
@@ -679,18 +668,18 @@ for (let k = 0; k < K; k++) {
 }
 ```
 
-### 3. Float64Array Contiguo
+### 2. Float64Array Contiguo
 Tutti i dati sono in un singolo buffer piatto, row-major. Nessun array di array, nessun boxing, prefetch automatico della CPU.
 
-### 4. Broadcasting Senza Copia
+### 3. Broadcasting Senza Copia
 `add`, `sub`, `dotMul` etc. evitano di materializzare un buffer espanso: il valore del vettore riga/colonna viene letto e applicato inline.
 
-### 5. Reshape O(1)
+### 4. Reshape O(1)
 ```typescript
 return new Matrix(r, c, this.data);  // stesso Float64Array, nuovi metadati
 ```
 
-### 6. Esponenziazione Rapida
+### 5. Esponenziazione Rapida
 `pow(k)` usa binary exponentiation: O(log k) moltiplicazioni invece di O(k).
 
 ---

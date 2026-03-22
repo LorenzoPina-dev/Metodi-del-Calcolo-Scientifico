@@ -57,15 +57,7 @@ function _matMulF64<T extends INumeric<T>>(A: Matrix<T>, B: Matrix<T>): Matrix<T
             const aik = (af[iOff + k] as any).value as number;
             if (aik === 0) continue;                 // skip esplicito degli zeri
             const kOff = k * N;
-            let j = 0;
-            // Unrolling ×4 — riduce il loop overhead del 75%
-            for (; j <= N - 4; j += 4) {
-                cf[outOff + j]     += aik * (bf[kOff + j]     as any).value;
-                cf[outOff + j + 1] += aik * (bf[kOff + j + 1] as any).value;
-                cf[outOff + j + 2] += aik * (bf[kOff + j + 2] as any).value;
-                cf[outOff + j + 3] += aik * (bf[kOff + j + 3] as any).value;
-            }
-            for (; j < N; j++) cf[outOff + j] += aik * (bf[kOff + j] as any).value;
+            for (let j = 0; j < N; j++) cf[outOff + j] += aik * (bf[kOff + j] as any).value;
         }
     }
 

@@ -77,14 +77,7 @@ function _sumCols<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
         const acc = new Float64Array(C);
         for (let i = 0; i < R; i++) {
             const off = i * C;
-            let j = 0;
-            for (; j <= C - 4; j += 4) {
-                acc[j]     += (ad[off + j]     as any).value;
-                acc[j + 1] += (ad[off + j + 1] as any).value;
-                acc[j + 2] += (ad[off + j + 2] as any).value;
-                acc[j + 3] += (ad[off + j + 3] as any).value;
-            }
-            for (; j < C; j++) acc[j] += (ad[off + j] as any).value;
+            for (let j = 0; j < C; j++) acc[j] += (ad[off + j] as any).value;
         }
         for (let j = 0; j < C; j++) od[j] = A.zero.fromNumber(acc[j]);
     } else {
@@ -105,12 +98,7 @@ function _sumRows<T extends INumeric<T>>(A: Matrix<T>): Matrix<T> {
         for (let i = 0; i < R; i++) {
             const off = i * C;
             let s = 0;
-            let j = 0;
-            for (; j <= C - 4; j += 4) {
-                s += (ad[off + j] as any).value + (ad[off + j + 1] as any).value
-                   + (ad[off + j + 2] as any).value + (ad[off + j + 3] as any).value;
-            }
-            for (; j < C; j++) s += (ad[off + j] as any).value;
+            for (let j = 0; j < C; j++) s += (ad[off + j] as any).value;
             od[i] = A.zero.fromNumber(s);
         }
     } else {
