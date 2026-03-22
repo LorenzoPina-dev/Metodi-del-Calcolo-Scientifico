@@ -1,47 +1,29 @@
 {
   "compilerOptions": {
-    /* Target moderno (necessario per BigInt, **, ecc.) */
-    "target": "ES2020",
+    "target":    "ES2020",
+    "module":    "ESNext",
 
-    /* Moduli per Node moderno */
-    "module": "ESNext",
-    "moduleResolution": "Node",
+    /* NodeNext risolve correttamente gli import directory → index.ts
+       e gestisce le estensioni .js negli import TS→JS. */
+    "moduleResolution": "Bundler",
 
-    /* Librerie disponibili */
     "lib": ["ES2020"],
-
-    /* Output */
-    "outDir": "./dist",
+    "outDir":  "./dist",
     "rootDir": "./src",
 
-    /* Strict mode (fondamentale per evitare bug tipo quelli che hai avuto) */
-    "strict": true,
-
-    /* Migliora l'inferenza di this */
-    "noImplicitThis": true,
-
-    /* Evita undefined silenziosi */
-    "strictNullChecks": true,
-
-    /* Interoperabilità */
-    "esModuleInterop": true,
-
-    /* Velocità compilazione */
-    "skipLibCheck": true,
-
-    /* Debug */
-    "sourceMap": true,
-
-    /* Permette import senza estensione .js in TS */
-    "resolveJsonModule": true,
-
-    /* Consigliato per Node moderno */
+    "strict":                          true,
+    "noImplicitThis":                  true,
+    "strictNullChecks":                true,
+    "esModuleInterop":                 true,
+    "skipLibCheck":                    true,
+    "sourceMap":                       true,
+    "resolveJsonModule":               true,
     "forceConsistentCasingInFileNames": true,
+    "noEmitOnError":                   true,
 
-    /* Non emettere se errore */
-    "noEmitOnError": true
+    /* Permette di usare 'override' nelle sottoclassi */
+    "noImplicitOverride": false
   },
-
   "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "dist-cjs"]
 }
