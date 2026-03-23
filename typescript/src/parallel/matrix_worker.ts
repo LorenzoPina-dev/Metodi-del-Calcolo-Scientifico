@@ -15,6 +15,12 @@
 
 import { parentPort, workerData, isMainThread, MessagePort } from "node:worker_threads";
 
+const DEBUG = process.env.BENCH_DEBUG === "1";
+const WORKER_ID = typeof (workerData as any)?.workerId === "number" ? (workerData as any).workerId : -1;
+function dbg(msg: string): void {
+    if (DEBUG) parentPort!.postMessage({ debug: msg, workerId: WORKER_ID });
+}
+
 if (isMainThread) {
     // Protegge da import accidentale nel thread principale
     throw new Error("matrix_worker.ts deve essere eseguito come Worker thread.");
@@ -112,12 +118,15 @@ parentPort!.on("message", (msg: {
 }) => {
     const { cmd, port } = msg;
 
+    dbg(`recv cmd=${cmd} rows=${msg.startRow}-${msg.endRow}`);
+
     try {
         if (cmd === CMD_MATMUL) {
             const A = new Float64Array(msg.aSAB!);
             const B = new Float64Array(msg.bSAB!);
             const C = new Float64Array(msg.cSAB!);
             matmulChunk(A, B, C, msg.M!, msg.K!, msg.N!, msg.startRow!, msg.endRow!);
+            dbg(`done cmd=${cmd} rows=${msg.startRow}-${msg.endRow}`);
             port.postMessage({ done: true });
 
         } else if (cmd === CMD_JACOBI) {
@@ -129,14 +138,19 @@ parentPort!.on("message", (msg: {
             const conv    = new Float64Array(msg.convSAB!);
             const convAbs = new Float64Array(msg.convMaxAbsSAB!);
             jacobiChunk(A, b, x, xNew, d, msg.n!, msg.startRow!, msg.endRow!, msg.wi!, conv, convAbs);
+            dbg(`done cmd=${cmd} rows=${msg.startRow}-${msg.endRow}`);
             port.postMessage({ done: true });
 
         } else {
             port.postMessage({ done: false, error: `cmd sconosciuto: ${cmd}` });
         }
     } catch (e) {
+        dbg(`error cmd=${cmd}: ${(e as Error).message}`);
         port.postMessage({ done: false, error: (e as Error).message });
     } finally {
         port.close();
     }
 });
+
+// Signal readiness to the main thread (used to avoid dispatch before handlers are set).
+parentPort!.postMessage({ ready: true });

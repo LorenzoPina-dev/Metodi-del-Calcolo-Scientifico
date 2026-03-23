@@ -20,8 +20,13 @@
 import { Worker, workerData, parentPort, isMainThread, receiveMessageOnPort, MessageChannel }
     from "node:worker_threads";
 import * as os from "node:os";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+
+const DEBUG = process.env.BENCH_DEBUG === "1";
+const DISPATCH_TIMEOUT_MS = Number.parseInt(process.env.BENCH_TIMEOUT_MS ?? "0", 10) || 0;
+
 
 // ─── Costanti ─────────────────────────────────────────────────────────────────
 export const PARALLEL_THRESHOLD = {
@@ -50,6 +55,83 @@ export const CMD = {
 const CTRL_HEADER = 1 + NUM_WORKERS;  // globalCmd + N state slots
 const SLOT_SIZE   = 8;                // i32 per worker slot
 const CTRL_SIZE   = CTRL_HEADER + NUM_WORKERS * SLOT_SIZE;
+
+// --- Worker entry + execArgv (tsx) -------------------------------------------
+function resolveWorkerEntry(): { path: string; needsTsx: boolean } {
+    const baseDir = dirname(fileURLToPath(import.meta.url));
+    const tsPath  = resolve(baseDir, "matrix_worker.ts");
+    if (existsSync(tsPath)) {
+        const bootstrapPath = resolve(baseDir, "matrix_worker_bootstrap.mjs");
+        if (existsSync(bootstrapPath)) return { path: bootstrapPath, needsTsx: false };
+        return { path: tsPath, needsTsx: true };
+    }
+    return { path: resolve(baseDir, "matrix_worker.js"), needsTsx: false };
+}
+
+function hasTsxHook(args: string[]): boolean {
+    for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+        if (arg === "--loader" || arg === "--import" || arg === "--experimental-loader") {
+            const next = args[i + 1] ?? "";
+            if (next.includes("tsx")) return true;
+        }
+        if (arg.startsWith("--loader=") || arg.startsWith("--import=") || arg.startsWith("--experimental-loader=")) {
+            if (arg.includes("tsx")) return true;
+        }
+    }
+    return false;
+}
+
+function buildWorkerExecArgv(needsTsx: boolean): string[] {
+    const base = process.execArgv.filter(arg => arg !== "--expose-gc");
+    if (!needsTsx) return base;
+    if (hasTsxHook(base)) return base;
+
+    const [maj, min, patch] = process.versions.node.split(".").map(n => Number.parseInt(n, 10));
+    const supportsImport =
+        (maj > 20) ||
+        (maj === 20 && (min > 6 || (min === 6 && patch >= 0))) ||
+        (maj === 18 && (min > 19 || (min === 19 && patch >= 0)));
+    if (supportsImport) return [...base, "--import", "tsx"];
+    return [...base, "--loader", "tsx"];
+}
+
+function waitForWorkerReady(w: Worker, index: number, timeoutMs = 5000): Promise<void> {
+    return new Promise((resolve, reject) => {
+        let done = false;
+        const onMessage = (msg: { ready?: boolean }) => {
+            if (msg?.ready) {
+                cleanup();
+                resolve();
+            }
+        };
+        const onError = (err: Error) => {
+            cleanup();
+            reject(err);
+        };
+        const onExit = (code: number) => {
+            cleanup();
+            reject(new Error(`Worker ${index} exited before ready (code ${code})`));
+        };
+        const timer = setTimeout(() => {
+            cleanup();
+            reject(new Error(`Worker ${index} ready timeout (${timeoutMs}ms)`));
+        }, timeoutMs);
+
+        function cleanup() {
+            if (done) return;
+            done = true;
+            clearTimeout(timer);
+            w.off("message", onMessage);
+            w.off("error", onError);
+            w.off("exit", onExit);
+        }
+
+        w.on("message", onMessage);
+        w.once("error", onError);
+        w.once("exit", onExit);
+    });
+}
 
 // ─── Struttura del job condiviso ──────────────────────────────────────────────
 export interface MatmulJob {
@@ -103,19 +185,33 @@ export class WorkerPool {
             return;
         }
 
-        const workerUrl = resolve(dirname(fileURLToPath(import.meta.url)), "matrix_worker.ts");
+        const { path: workerPath, needsTsx } = resolveWorkerEntry();
+        const workerExecArgv = buildWorkerExecArgv(needsTsx);
 
         try {
+            const readyPromises: Promise<void>[] = [];
             for (let i = 0; i < NUM_WORKERS; i++) {
-                const w = new Worker(workerUrl, {
+                const w = new Worker(workerPath, {
                     workerData: { workerId: i, ctrlSAB: this.ctrlSAB, numWorkers: NUM_WORKERS },
-                    execArgv: process.execArgv.filter(arg => arg !== "--expose-gc")
+                    execArgv: workerExecArgv,
+                    type: "module"
                 });
                 w.on("error", (e) => console.error(`[Worker ${i}] errore:`, e));
+                if (DEBUG) {
+                    w.on("message", (msg: { debug?: string; workerId?: number }) => {
+                        if (msg?.debug) {
+                            const wid = msg.workerId ?? i;
+                            console.log(`[Worker ${wid}] ${msg.debug}`);
+                        }
+                    });
+                    w.on("exit", (code) => {
+                        console.log(`[Worker ${i}] exit ${code}`);
+                    });
+                }
                 this.workers.push(w);
+                readyPromises.push(waitForWorkerReady(w, i));
             }
-            // Piccola pausa per avvio worker
-            await new Promise(r => setTimeout(r, 50));
+            await Promise.all(readyPromises);
             this._available = true;
         } catch (e) {
             console.warn("[WorkerPool] Impossibile inizializzare workers:", (e as Error).message);
@@ -146,14 +242,24 @@ export class WorkerPool {
         const nw   = Math.min(this.workers.length, M);
         const chunk = Math.ceil(M / nw);
         const promises: Promise<void>[] = [];
-
+   
         for (let wi = 0; wi < nw; wi++) {
             const startRow = wi * chunk;
             const endRow   = Math.min(startRow + chunk, M);
             if (startRow >= endRow) continue;
             promises.push(this._dispatchMatmulChunk(wi, aSAB, bSAB, cSAB, M, K, N, startRow, endRow));
         }
-        await Promise.all(promises);
+        const settled = await Promise.allSettled(promises);
+        const failures = settled.filter((s): s is PromiseRejectedResult => s.status === "rejected");
+        if (failures.length) {
+            console.error(`[WorkerPool] matmul failed (${failures.length}/${settled.length})`);
+            for (const f of failures) {
+                const msg = (f.reason && (f.reason as any).message) ? (f.reason as any).message : String(f.reason);
+                console.error(`[WorkerPool] matmul error: ${msg}`);
+            }
+            _matmulSerial(aFlat, bFlat, cFlat, M, K, N);
+            return;
+        }
         cFlat.set(new Float64Array(cSAB));
     }
 
@@ -228,15 +334,42 @@ export class WorkerPool {
         return new Promise((resolve, reject) => {
             const w = this.workers[wi];
             const { port1, port2 } = new MessageChannel();
-            port1.once("message", (msg: { done: boolean; error?: string }) => {
+            let settled = false;
+            let timer: NodeJS.Timeout | null = null;
+
+            const finish = (err?: Error) => {
+                if (settled) return;
+                settled = true;
+                if (timer) clearTimeout(timer);
                 port1.close();
-                if (msg.error) reject(new Error(msg.error));
+                if (err) reject(err);
                 else resolve();
+            };
+
+            port1.once("message", (msg: { done: boolean; error?: string }) => {
+                if (msg.error) finish(new Error(`Worker ${wi} matmul error rows=${startRow}-${endRow}: ${msg.error}`));
+                else finish();
             });
-            w.postMessage(
-                { cmd: CMD.MATMUL, aSAB, bSAB, cSAB, M, K, N, startRow, endRow, port: port2 },
-                [port2]
-            );
+            port1.start();
+
+            if (DISPATCH_TIMEOUT_MS > 0) {
+                timer = setTimeout(() => {
+                    finish(new Error(`Worker ${wi} matmul timeout (${DISPATCH_TIMEOUT_MS}ms)`));
+                }, DISPATCH_TIMEOUT_MS);
+            }
+
+            if (DEBUG) {
+                console.log(`[debug] dispatch matmul w=${wi} rows=${startRow}-${endRow}`);
+            }
+
+            try {
+                w.postMessage(
+                    { cmd: CMD.MATMUL, aSAB, bSAB, cSAB, M, K, N, startRow, endRow, port: port2 },
+                    [port2]
+                );
+            } catch (e) {
+                finish(e as Error);
+            }
         });
     }
 
@@ -250,16 +383,43 @@ export class WorkerPool {
         return new Promise((resolve, reject) => {
             const w = this.workers[wi];
             const { port1, port2 } = new MessageChannel();
-            port1.once("message", (msg: { done: boolean; error?: string }) => {
+            let settled = false;
+            let timer: NodeJS.Timeout | null = null;
+
+            const finish = (err?: Error) => {
+                if (settled) return;
+                settled = true;
+                if (timer) clearTimeout(timer);
                 port1.close();
-                if (msg.error) reject(new Error(msg.error));
+                if (err) reject(err);
                 else resolve();
+            };
+
+            port1.once("message", (msg: { done: boolean; error?: string }) => {
+                if (msg.error) finish(new Error(`Worker ${wi} jacobi error rows=${startRow}-${endRow}: ${msg.error}`));
+                else finish();
             });
-            w.postMessage(
-                { cmd: CMD.JACOBI, aSAB, bSAB, xSAB, xnSAB, dSAB, convSAB, convMaxAbsSAB,
-                  n, startRow, endRow, wi, port: port2 },
-                [port2]
-            );
+            port1.start();
+
+            if (DISPATCH_TIMEOUT_MS > 0) {
+                timer = setTimeout(() => {
+                    finish(new Error(`Worker ${wi} jacobi timeout (${DISPATCH_TIMEOUT_MS}ms)`));
+                }, DISPATCH_TIMEOUT_MS);
+            }
+
+            if (DEBUG) {
+                console.log(`[debug] dispatch jacobi w=${wi} rows=${startRow}-${endRow}`);
+            }
+
+            try {
+                w.postMessage(
+                    { cmd: CMD.JACOBI, aSAB, bSAB, xSAB, xnSAB, dSAB, convSAB, convMaxAbsSAB,
+                      n, startRow, endRow, wi, port: port2 },
+                    [port2]
+                );
+            } catch (e) {
+                finish(e as Error);
+            }
         });
     }
 

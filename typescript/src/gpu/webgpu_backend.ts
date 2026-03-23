@@ -36,6 +36,27 @@ let _adapter: GPUAdapter | null = null;
 let _available = false;
 let _enabled   = true;   // può essere disabilitato manualmente
 
+// ─── Costanti GPU (risolte dopo initGPU, per compatibilità con il polyfill Node) ──
+// Il polyfill @webgpu/node inietta GPUBufferUsage, GPUMapMode ecc. in globalThis
+// solo durante initGPU(). Questi alias li catturano in modo lazy.
+let _BufferUsage: typeof GPUBufferUsage;
+let _MapMode:     typeof GPUMapMode;
+
+function bufUsage(): typeof GPUBufferUsage {
+    if (!_BufferUsage) {
+        _BufferUsage = (globalThis as any).GPUBufferUsage as typeof GPUBufferUsage;
+        if (!_BufferUsage) throw new Error("GPUBufferUsage non disponibile — initGPU() non ancora chiamato o polyfill non caricato.");
+    }
+    return _BufferUsage;
+}
+function mapMode(): typeof GPUMapMode {
+    if (!_MapMode) {
+        _MapMode = (globalThis as any).GPUMapMode as typeof GPUMapMode;
+        if (!_MapMode) throw new Error("GPUMapMode non disponibile — initGPU() non ancora chiamato o polyfill non caricato.");
+    }
+    return _MapMode;
+}
+
 // Pipeline cache: evita ricompilazione shader ad ogni chiamata
 const _pipelineCache = new Map<string, GPUComputePipeline>();
 const _bglCache      = new Map<string, GPUBindGroupLayout>();
@@ -58,7 +79,18 @@ export async function initGPU(): Promise<boolean> {
             // Node.js senza WebGPU polyfill
             // Tentiamo il polyfill @webgpu/node se installato
             try {
-                const { create } = await import("webgpu" as any);
+                const mod = await import("webgpu" as any);
+                const create = (mod as any).create as (opts: any[]) => GPU;
+                const globals = (mod as any).globals as Record<string, unknown> | undefined;
+
+                if (globals) {
+                    for (const [k, v] of Object.entries(globals)) {
+                        if (typeof (globalThis as any)[k] === "undefined") {
+                            (globalThis as any)[k] = v;
+                        }
+                    }
+                }
+
                 const nav = create([]) as unknown as GPU;
                 _adapter = await nav.requestAdapter({ powerPreference: "high-performance" });
             } catch {
@@ -99,7 +131,7 @@ export function getDevice(): GPUDevice {
 export function createF32Buffer(
     data: Float64Array | null,
     size: number,
-    usage: GPUBufferUsageFlags
+    usage: number
 ): GPUBuffer {
     const d = getDevice();
     const buf = d.createBuffer({ size: size * 4, usage, mappedAtCreation: data !== null });
@@ -114,9 +146,10 @@ export function createF32Buffer(
 /** Crea un buffer uniforme da un Uint32Array o Float32Array. */
 export function createUniformBuffer(data: ArrayBuffer): GPUBuffer {
     const d = getDevice();
+    const BU = bufUsage();
     const buf = d.createBuffer({
         size   : Math.max(data.byteLength, 16),   // minimo 16 byte per alignment
-        usage  : GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        usage  : BU.UNIFORM | BU.COPY_DST,
         mappedAtCreation: true,
     });
     new Uint8Array(buf.getMappedRange()).set(new Uint8Array(data));
@@ -127,14 +160,16 @@ export function createUniformBuffer(data: ArrayBuffer): GPUBuffer {
 /** Legge un buffer GPU e ritorna Float64Array (convertendo da f32). */
 export async function readF32Buffer(buf: GPUBuffer, nElems: number): Promise<Float64Array> {
     const d = getDevice();
+    const BU = bufUsage();
+    const MM = mapMode();
     const staging = d.createBuffer({
         size  : nElems * 4,
-        usage : GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+        usage : BU.MAP_READ | BU.COPY_DST,
     });
     const enc = d.createCommandEncoder();
     enc.copyBufferToBuffer(buf, 0, staging, 0, nElems * 4);
     d.queue.submit([enc.finish()]);
-    await staging.mapAsync(GPUMapMode.READ);
+    await staging.mapAsync(MM.READ);
     const src = new Float32Array(staging.getMappedRange());
     const out = new Float64Array(nElems);
     for (let i = 0; i < nElems; i++) out[i] = src[i];
@@ -189,12 +224,13 @@ export async function gpuMatmul(
     const uData = new Uint32Array([M, K, N, 0]);
     const uBuf  = createUniformBuffer(uData.buffer);
 
+    const BU = bufUsage();
     const aBuf = createF32Buffer(aFlat, M * K,
-        GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+        BU.STORAGE | BU.COPY_DST);
     const bBuf = createF32Buffer(bFlat, K * N,
-        GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+        BU.STORAGE | BU.COPY_DST);
     const cBuf = createF32Buffer(null, M * N,
-        GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC);
+        BU.STORAGE | BU.COPY_SRC);
 
     const pipeline = getOrCreatePipeline("matmul", SHADER_MATMUL);
     const bindGroup = d.createBindGroup({
@@ -228,9 +264,10 @@ export async function gpuElementwise(
 
     const uData = new Uint32Array([len, op, 0, 0]);
     const uBuf  = createUniformBuffer(uData.buffer);
-    const aBuf  = createF32Buffer(aFlat, len, GPUBufferUsage.STORAGE);
-    const bBuf  = createF32Buffer(bFlat, len, GPUBufferUsage.STORAGE);
-    const cBuf  = createF32Buffer(null,  len, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC);
+    const BU = bufUsage();
+    const aBuf  = createF32Buffer(aFlat, len, BU.STORAGE);
+    const bBuf  = createF32Buffer(bFlat, len, BU.STORAGE);
+    const cBuf  = createF32Buffer(null,  len, BU.STORAGE | BU.COPY_SRC);
 
     const pipeline  = getOrCreatePipeline("elementwise", SHADER_ELEMENTWISE);
     const bindGroup = d.createBindGroup({
@@ -263,8 +300,9 @@ export async function gpuScalarOp(
     new Float32Array(uRaw, 16, 4).set([scalar, 0, 0, 0]);
     const uBuf = createUniformBuffer(uRaw);
 
-    const aBuf = createF32Buffer(aFlat, len, GPUBufferUsage.STORAGE);
-    const cBuf = createF32Buffer(null,  len, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC);
+    const BU = bufUsage();
+    const aBuf = createF32Buffer(aFlat, len, BU.STORAGE);
+    const cBuf = createF32Buffer(null,  len, BU.STORAGE | BU.COPY_SRC);
 
     const pipeline  = getOrCreatePipeline("scalar_op", SHADER_SCALAR_OP);
     const bindGroup = d.createBindGroup({
@@ -290,8 +328,9 @@ export async function gpuUnary(aFlat: Float64Array, op: number): Promise<Float64
 
     const uData = new Uint32Array([len, op, 0, 0]);
     const uBuf  = createUniformBuffer(uData.buffer);
-    const aBuf  = createF32Buffer(aFlat, len, GPUBufferUsage.STORAGE);
-    const cBuf  = createF32Buffer(null,  len, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC);
+    const BU = bufUsage();
+    const aBuf  = createF32Buffer(aFlat, len, BU.STORAGE);
+    const cBuf  = createF32Buffer(null,  len, BU.STORAGE | BU.COPY_SRC);
 
     const pipeline  = getOrCreatePipeline("unary", SHADER_UNARY);
     const bindGroup = d.createBindGroup({
@@ -325,23 +364,24 @@ export async function gpuJacobi(
     const uData = new Uint32Array([n, 0, 0, 0]);
     const uBuf  = createUniformBuffer(uData.buffer);
 
-    const aBuf   = createF32Buffer(aFlat,   n * n, GPUBufferUsage.STORAGE);
-    const bBuf   = createF32Buffer(bFlat,   n,     GPUBufferUsage.STORAGE);
-    const dBuf   = createF32Buffer(diagInv, n,     GPUBufferUsage.STORAGE);
+    const BU = bufUsage();
+    const aBuf   = createF32Buffer(aFlat,   n * n, BU.STORAGE);
+    const bBuf   = createF32Buffer(bFlat,   n,     BU.STORAGE);
+    const dBuf   = createF32Buffer(diagInv, n,     BU.STORAGE);
 
     // x e xNew si alternano (ping-pong)
     const xBuf   = d.createBuffer({
         size  : n * 4,
-        usage : GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+        usage : BU.STORAGE | BU.COPY_DST | BU.COPY_SRC,
     });
     const xnBuf  = d.createBuffer({
         size  : n * 4,
-        usage : GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+        usage : BU.STORAGE | BU.COPY_SRC,
     });
     // Buffer per |x_new - x_old|: un valore per elemento
     const diffBuf = d.createBuffer({
         size  : n * 4,
-        usage : GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+        usage : BU.STORAGE | BU.COPY_SRC,
     });
 
     // Inizializza x a 0
