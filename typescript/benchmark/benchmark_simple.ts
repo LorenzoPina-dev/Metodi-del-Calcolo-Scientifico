@@ -1,6 +1,8 @@
 // benchmark/benchmark_simple.ts
 //
 // Benchmark operazioni ELEMENTARI (O(n) e O(n²)) su matrici grandi.
+// Inizializza WASM automaticamente: se il modulo è disponibile, tutte le
+// operazioni Float64M useranno il fast-path WebAssembly.
 //
 // ── PERCHÉ LE DIMENSIONI SONO LIMITATE ────────────────────────────────────
 // Ogni elemento di Matrix<Float64M> è un oggetto JS separato (Float64M).
@@ -15,11 +17,6 @@
 //   n=3000: 3 × 432MB = 1.3GB → ok ma lento per GC
 //   n=5000: 3 × 1.2GB = 3.6GB → OOM quasi certo
 //
-// SOLUZIONE ARCHITETTURALE:
-//   Per grandi n senza overhead-oggetti, usare Float64Array direttamente.
-//   Il benchmark mostra le PRESTAZIONI REALI della libreria con l'astrazione
-//   generica — utile per capire dove agire sull'allocator.
-//
 // Per forzare più heap: node --max-old-space-size=8192 (8GB)
 //
 // Utilizzo: npx tsx --expose-gc benchmark/benchmark_simple.ts
@@ -29,6 +26,17 @@
 import { writeFileSync } from "node:fs";
 import { performance }   from "node:perf_hooks";
 import { Matrix, Float64M } from "../src/index.js";
+import { initWasm } from "./wasm.js";
+
+// ── INIZIALIZZA WASM (prima di qualsiasi benchmark) ─────────────────────────
+let wasmAvailable = false;
+try {
+    await initWasm();
+    wasmAvailable = true;
+    console.log("  ✓ WebAssembly inizializzato — fast-path WASM attivo");
+} catch (e) {
+    console.warn("  ⚠️  WebAssembly non disponibile, uso TS fast-path:", (e as Error).message);
+}
 
 // ── CONFIG ──────────────────────────────────────────────────────────────────
 // Dimensioni scelte per non OOM con operazioni binarie (3 matrici in heap)
@@ -70,8 +78,7 @@ function rec(
     group: string, op: string, complexity: string, n: number,
     m: ReturnType<typeof measure>, byteFactor?: number
 ) {
-    // throughput GB/s: bytes_letti_scritti / (tempo_secondi)
-    const matBytes = n * n * 8;   // n² × 8 byte se fosse Float64Array nativa
+    const matBytes = n * n * 8;
     const gbps = byteFactor && m.avg > 0 ? (byteFactor * matBytes / 1e9) / (m.avg / 1000) : undefined;
     results.push({
         group, operation: op, complexity, size: n,
@@ -83,7 +90,7 @@ function rec(
 // ── BANNER ──────────────────────────────────────────────────────────────────
 console.log("╔══════════════════════════════════════════════════════╗");
 console.log("║   numeric-matrix — BENCHMARK SEMPLICE (grandi n)    ║");
-console.log(`║   Node ${process.version.padEnd(10)}                              ║`);
+console.log(`║   Node ${process.version.padEnd(10)}  WASM: ${wasmAvailable ? "✓ attivo  " : "✗ fallback"}         ║`);
 console.log(`║   Binary:${SIZES_BINARY.join(",").padEnd(24)} Unary:${SIZES_UNARY.join(",").padEnd(18)}║`);
 console.log("╚══════════════════════════════════════════════════════╝");
 console.log("\nNota: Float64M wrappa ogni numero in un oggetto JS (~48 byte/elem).");
@@ -192,7 +199,7 @@ for (const n of SIZES_PROPS) {
     const props: [string, string, () => void][] = [
         ["isSquare",             "O(1)",  () => A.isSquare()],
         ["isSymmetric",          "O(n²)", () => Asym.isSymmetric()],
-        ["isUpperTriangular",    "O(n²)", () => U.isUpperTriangular()],   // early-exit: primo elem ≠ 0 sotto diag
+        ["isUpperTriangular",    "O(n²)", () => U.isUpperTriangular()],
         ["isLowerTriangular",    "O(n²)", () => L.isLowerTriangular()],
         ["isDiagonal",           "O(n²)", () => Matrix.diag(n,1).isDiagonal()],
         ["isZeroMatrix",         "O(n²)", () => Z.isZeroMatrix()],
@@ -209,16 +216,11 @@ for (const n of SIZES_PROPS) {
         `hasFinite=${results.find(r=>r.operation==="hasFiniteValues"&&r.size===n)!.avgMs.toFixed(2).padStart(6)}ms`);
 }
 
-// ── F: SCALABILITÀ TRASPOSIZIONE (memory-bandwidth puro) ────────────────────
-console.log("\n━━━  F. Scalabilità trasposizione — memory bandwidth  ━━━");
-console.log("  (dovrebbe scalare ~O(n²), throughput ~costante se memory-bound)");
-console.log("  (il throughput reale è basso perché ogni elemento è un oggetto JS)");
+// ── F: SCALABILITÀ TRASPOSIZIONE ────────────────────────────────────────────
+console.log("\n━━━  F. Scalabilità trasposizione  ━━━━━━━━━━━━━━━━━━━━");
 for (const n of SIZES_UNARY) {
     const A = Matrix.random(n, n);
     const m = measure(() => A.t(), REPS);
-    // Calcola throughput teorico vs reale
-    // Teorico (Float64Array): 2 × n² × 8 bytes
-    // Reale (Float64M[]): 2 × n² × 48 bytes circa
     const gbps_theoretical = (2 * n * n * 8 / 1e9) / (m.avg / 1000);
     const gbps_actual      = (2 * n * n * 48 / 1e9) / (m.avg / 1000);
     rec("Scalabilità t", "transpose", "O(n²)", n, m, 2);
@@ -226,20 +228,19 @@ for (const n of SIZES_UNARY) {
         `GB/s teorico=${gbps_theoretical.toFixed(2).padStart(5)}  reale≈${gbps_actual.toFixed(2).padStart(5)}`);
 }
 
-// ── G: OVERHEAD OGGETTI — confronto accesso diretto ─────────────────────────
-console.log("\n━━━  G. Overhead oggetti Float64M: add vs Float64Array nativa  ━━━");
-console.log("  (mostra il costo dell'astrazione generica)");
+// ── G: OVERHEAD OGGETTI ─────────────────────────────────────────────────────
+console.log("\n━━━  G. Overhead oggetti Float64M vs Float64Array nativa  ━━━");
+const overheadRows: { n: number; wrapped: number; native: number }[] = [];
 for (const n of SIZES_BINARY) {
     const A = Matrix.random(n, n), B = Matrix.random(n, n);
-    // Tempo add Float64M (con oggetti)
     const mWrapped = measure(() => A.add(B));
-    // Tempo add Float64Array nativa (senza oggetti, solo numeri)
     const aRaw = new Float64Array(n * n);
     const bRaw = new Float64Array(n * n);
     const cRaw = new Float64Array(n * n);
     for (let i = 0; i < n*n; i++) { aRaw[i] = Math.random(); bRaw[i] = Math.random(); }
     const mNative = measure(() => { for (let i=0;i<n*n;i++) cRaw[i]=aRaw[i]+bRaw[i]; }, REPS);
     const overhead = mWrapped.avg / mNative.avg;
+    overheadRows.push({ n, wrapped: r3(mWrapped.avg), native: r3(mNative.avg) });
     rec("Overhead", "add Float64M",      "O(n²)", n, mWrapped);
     rec("Overhead", "add Float64Array",  "O(n²)", n, mNative);
     console.log(`  n=${n.toString().padStart(5)}  F64M=${mWrapped.avg.toFixed(1).padStart(7)}ms  NativeArr=${mNative.avg.toFixed(1).padStart(6)}ms  overhead=×${overhead.toFixed(1)}`);
@@ -247,10 +248,9 @@ for (const n of SIZES_BINARY) {
 
 // ── SAVE JSON ────────────────────────────────────────────────────────────────
 writeFileSync("benchmark/benchmark_simple_results.json",
-    JSON.stringify({ meta: { date: new Date().toISOString(), node: process.version, note: "Float64M object overhead benchmark. See docs for size limits." }, results }, null, 2));
+    JSON.stringify({ meta: { date: new Date().toISOString(), node: process.version, wasm: wasmAvailable }, results }, null, 2));
 
 // ── HTML ─────────────────────────────────────────────────────────────────────
-
 const groups: Record<string, { ops: string[]; sizes: number[]; pal: string[] }> = {
     "Aritmetica": { ops: ["add","sub","dotMul","dotDiv","mul scalar","dotPow(2)"],
         sizes: SIZES_BINARY, pal: ["#1565C0","#1976D2","#1E88E5","#42A5F5","#0097A7","#006064"] },
@@ -274,7 +274,7 @@ function makeCharts(): string {
         const id = `c_${grp.replace(/[^a-z]/gi,"_")}`;
         return `
 <section>
-  <h2>${grp} — scalabilità Float64M (grandi n)</h2>
+  <h2>${grp} — scalabilità Float64M (grandi n)${wasmAvailable ? " · WASM attivo" : ""}</h2>
   <div class="chart-wrap"><canvas id="${id}"></canvas></div>
 </section>
 <script>
@@ -286,13 +286,6 @@ new Chart(document.getElementById("${id}"),{type:"line",
 });</script>`;
     }).join("\n");
 }
-
-// Overhead chart
-const overheadRows = SIZES_BINARY.map(n => ({
-    n,
-    wrapped:  results.find(r => r.group === "Overhead" && r.operation === "add Float64M" && r.size === n)?.avgMs ?? 0,
-    native:   results.find(r => r.group === "Overhead" && r.operation === "add Float64Array" && r.size === n)?.avgMs ?? 0,
-}));
 
 const allRows = [...results].sort((a, b) => a.group.localeCompare(b.group) || a.size - b.size)
     .map(r => `<tr><td>${r.group}</td><td>${r.operation}</td><td>${r.complexity}</td><td>${r.size.toLocaleString()}</td><td>${r.avgMs}</td><td>${r.minMs}</td><td>${r.stdMs}</td><td>${r.memMB}</td><td>${r.gbps ?? "—"}</td></tr>`)
@@ -312,12 +305,12 @@ section{background:#fff;border-radius:8px;padding:14px;margin-bottom:16px;box-sh
 h2{font-size:.9rem;font-weight:600;color:#1B5E20;margin-bottom:10px;border-bottom:2px solid #E8F5E9;padding-bottom:5px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .chart-wrap{position:relative;height:280px}
-.chart-wrap-lg{position:relative;height:360px}
 table{width:100%;border-collapse:collapse;font-size:.74rem}
 th{background:#E8F5E9;color:#1B5E20;padding:4px 7px;text-align:left;border-bottom:2px solid #A5D6A7}
 td{padding:3px 7px;border-bottom:1px solid #eee}
 tr:hover td{background:#F1F8F1}
-.warn{background:#FFF9C4;border-left:3px solid #F9A825;padding:10px 14px;border-radius:4px;margin-bottom:14px;font-size:.8rem;line-height:1.5}
+.warn{background:#FFF3E0;border-left:3px solid #FF9800;padding:10px 14px;border-radius:4px;margin-bottom:14px;font-size:.8rem;line-height:1.5}
+.wasm-ok{background:#E8F5E9;border-left:3px solid #4CAF50;padding:10px 14px;border-radius:4px;margin-bottom:14px;font-size:.8rem}
 .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:14px}
 .card{background:#E8F5E9;border-radius:6px;padding:8px 12px}
 .card .val{font-size:1.3rem;font-weight:700;color:#1B5E20}
@@ -325,15 +318,18 @@ tr:hover td{background:#F1F8F1}
 </style></head><body>
 <header>
   <h1>numeric-matrix — Benchmark Operazioni Semplici</h1>
-  <p>${new Date().toLocaleString("it-IT")} · Node ${process.version} · Float64M only</p>
+  <p>${new Date().toLocaleString("it-IT")} · Node ${process.version} · WASM: ${wasmAvailable ? "✓ attivo" : "✗ TS fast-path"}</p>
 </header>
 <main>
+${wasmAvailable
+    ? `<div class="wasm-ok">✅ <strong>WebAssembly attivo:</strong> Tutte le operazioni Float64M usano il kernel WASM compilato con --optimizeLevel 3. Le misurazioni includono il costo di trasferimento dati JS↔WASM.</div>`
+    : `<div class="warn">⚠️ <strong>WebAssembly non disponibile:</strong> Benchmark eseguito con il TypeScript fast-path. Esegui <code>npm run build:wasm</code> per abilitare WASM.</div>`
+}
 <div class="warn">
-  <strong>⚠️ Overhead oggetti:</strong>
+  <strong>ℹ️ Overhead oggetti:</strong>
   Matrix&lt;Float64M&gt; memorizza ogni elemento come oggetto JS separato (~48 byte/elem).
   Un'operazione <code>add</code> su n×n crea n² nuovi oggetti Float64M allocati nell'heap V8.
   A n=2000 questo produce 4M oggetti × 48B = 192MB <em>per matrice</em>, contro i 32MB di una Float64Array nativa.
-  Il throughput "GB/s" mostrato è calcolato su <em>8 byte/elem</em> (valore nativo), quindi è il throughput <em>teorico massimo</em> se usassimo Float64Array — il throughput reale è ~6× inferiore per l'overhead oggetti.
   Per n &gt; 2000 con operazioni binarie, passare <code>--max-old-space-size=8192</code>.
 </div>
 
@@ -343,6 +339,7 @@ tr:hover td{background:#F1F8F1}
   <div class="card"><div class="val">~${overheadRows.length>0?Math.round(overheadRows.reduce((s,r)=>s+(r.wrapped/r.native),0)/overheadRows.length):0}×</div><div class="lbl">Overhead medio vs Float64Array</div></div>
   <div class="card"><div class="val">${Math.max(...SIZES_BINARY).toLocaleString()}</div><div class="lbl">n max (binarie)</div></div>
   <div class="card"><div class="val">${Math.max(...SIZES_UNARY).toLocaleString()}</div><div class="lbl">n max (unarie)</div></div>
+  <div class="card"><div class="val">${wasmAvailable ? "✓" : "✗"}</div><div class="lbl">WASM</div></div>
 </div>
 
 <section>
@@ -362,7 +359,6 @@ ${makeCharts()}
 </section>
 </main>
 <script>
-// Overhead chart
 new Chart(document.getElementById("c_overhead"),{type:"bar",
   data:{
     labels:${JSON.stringify(SIZES_BINARY.map(n=>n.toLocaleString()))},

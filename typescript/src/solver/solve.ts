@@ -26,10 +26,8 @@ export function solve<T extends INumeric<T>>(
             return Matrix.solver.solveUpperTriangular(L.ct(), y);
         }
 
-        case "LDLT": {
-            // A simmetrica (non necessariamente SPD) → LDL^T
+        case "LDLT":
             return Matrix.decomp.solveLDLT(this, b);
-        }
 
         case "QR": {
             const { Q, R } = Matrix.decomp.qr(this);
@@ -42,22 +40,22 @@ export function solve<T extends INumeric<T>>(
         case "GAUSS-SEIDEL":
             return Matrix.solver.solveGaussSeidelMat(this, b);
 
-        case "SOR": {
-            // Default ω=1.5 — l'utente può chiamare solveSOR direttamente
-            // per un valore personalizzato
+        case "SOR":
+            // Default ω=1.5 — usa solveSOR() direttamente per un valore custom
             return Matrix.solver.solveSOR(this, b, 1.5);
-        }
+
+        case "JOR":
+            // Default ω=1.0 (= Jacobi classico) — usa solveJorMat() direttamente per omega custom
+            return Matrix.solver.solveJorMat(this, b, 1.0);
 
         case "CG":
-        case "CONJUGATE-GRADIENT": {
-            // Richiede A SPD
+        case "CONJUGATE-GRADIENT":
             return Matrix.solver.solveCG(this, b);
-        }
 
         default:
             throw new Error(
                 `solve: metodo '${method}' non riconosciuto. ` +
-                `Disponibili: LU, LUP, QR, CHOLESKY, LDLT, JACOBI, GAUSS-SEIDEL, SOR, CG`
+                `Disponibili: LU, LUP, QR, CHOLESKY, LDLT, JACOBI, GAUSS-SEIDEL, SOR, JOR, CG`
             );
     }
 }

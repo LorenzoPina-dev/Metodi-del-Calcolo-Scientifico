@@ -6,6 +6,10 @@ import { performance }   from "node:perf_hooks";
 import { Matrix, Float64M, Complex, Rational } from "../src/index.js";
 import { solveSOR } from "../src/solver/sor.js";
 import { solveCG }  from "../src/solver/cg.js";
+import { initWasm } from "./wasm";
+
+// All'avvio — una sola volta
+await initWasm();
 
 // ── CONFIG ───────────────────────────────────────────────────
 const CFG = {

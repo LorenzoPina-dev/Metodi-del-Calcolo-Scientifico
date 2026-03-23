@@ -1,0 +1,840 @@
+<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
+<title>numeric-matrix — Benchmark Report</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#222;font-size:14px}
+header{background:#1565C0;color:#fff;padding:18px 36px}
+header h1{font-size:1.5rem;font-weight:600}
+header p{opacity:.75;font-size:.82rem;margin-top:4px}
+main{max-width:1600px;margin:0 auto;padding:18px}
+nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+nav a{background:#E3F2FD;color:#1565C0;padding:5px 12px;border-radius:16px;text-decoration:none;font-size:.8rem;font-weight:500}
+nav a:hover{background:#BBDEFB}
+section{background:#fff;border-radius:8px;padding:16px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+h2{font-size:.95rem;font-weight:600;color:#1565C0;margin-bottom:12px;border-bottom:2px solid #E3F2FD;padding-bottom:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.chart-wrap{position:relative;height:300px}
+.chart-wrap-tall{position:relative;height:380px}
+table{width:100%;border-collapse:collapse;font-size:.76rem}
+th{background:#E3F2FD;color:#0D47A1;padding:5px 8px;text-align:left;border-bottom:2px solid #90CAF9;white-space:nowrap}
+td{padding:3px 8px;border-bottom:1px solid #eee}
+tr:hover td{background:#F8FBFF}
+.ok{color:#2E7D32;font-weight:600}.warn{color:#E65100;font-weight:600}.err{color:#C62828;font-weight:600}
+.badge{display:inline-block;padding:1px 6px;border-radius:10px;font-size:.7rem;font-weight:600}
+.badge-f{background:#BBDEFB;color:#0D47A1}.badge-c{background:#FCE4EC;color:#880E4F}.badge-r{background:#E8F5E9;color:#1B5E20}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.card{background:#E3F2FD;border-radius:6px;padding:10px 14px}
+.card .val{font-size:1.4rem;font-weight:700;color:#0D47A1}
+.card .lbl{font-size:.68rem;color:#546E7A;margin-top:2px}
+.note{background:#FFF3E0;border-left:3px solid #FF9800;padding:8px 12px;margin-bottom:12px;font-size:.8rem;border-radius:3px}
+</style></head><body>
+<header>
+  <h1>numeric-matrix — Benchmark Report Completo</h1>
+  <p>Float64M · Complex · Rational · 23/03/2026, 09:43:36 · Node v20.15.1</p>
+</header>
+<main>
+
+<nav>
+  <a href="#summary">Riepilogo</a>
+  <a href="#scalabilita">Scalabilità mul</a>
+  <a href="#aritmetica">Aritmetica</a>
+  <a href="#unarie">Unarie</a>
+  <a href="#trasformazioni">Trasformazioni</a>
+  <a href="#statistiche">Statistiche</a>
+  <a href="#decomposizioni">Decomposizioni</a>
+  <a href="#solver">Solver</a>
+  <a href="#iterativi">Iterativi</a>
+  <a href="#proprieta">Proprietà</a>
+  <a href="#tipi">Confronto tipi</a>
+  <a href="#tabelle">Tabelle</a>
+</nav>
+
+<section id="summary">
+  <h2>Riepilogo</h2>
+  <div class="summary">
+    <div class="card"><div class="val">441</div><div class="lbl">Misurazioni</div></div>
+    <div class="card"><div class="val">16</div><div class="lbl">Categorie</div></div>
+    <div class="card"><div class="val">3</div><div class="lbl">Tipi numerici</div></div>
+    <div class="card"><div class="val">77</div><div class="lbl">Solver ✓ res&lt;1e-8</div></div>
+    <div class="card"><div class="val">0</div><div class="lbl">Solver con problemi</div></div>
+    <div class="card"><div class="val">95</div><div class="lbl">Operazioni distinte</div></div>
+  </div>
+</section>
+
+<section id="scalabilita">
+  <h2>Scalabilità — Moltiplicazione matriciale vs O(n³)</h2>
+  <div class="chart-wrap-tall"><canvas id="c_mul_scale"></canvas></div>
+</section>
+
+<div class="grid2" id="aritmetica">
+<section>
+  <h2>Aritmetica element-wise — scalabilità</h2>
+  <div class="chart-wrap"><canvas id="c_aritm"></canvas></div>
+</section>
+<section id="unarie">
+  <h2>Funzioni unarie — scalabilità</h2>
+  <div class="chart-wrap"><canvas id="c_unary"></canvas></div>
+</section>
+</div>
+
+<div class="grid2" id="trasformazioni">
+<section>
+  <h2>Trasformazioni — scalabilità</h2>
+  <div class="chart-wrap"><canvas id="c_transf"></canvas></div>
+</section>
+<section id="statistiche">
+  <h2>Statistiche e norme — scalabilità</h2>
+  <div class="chart-wrap"><canvas id="c_stat"></canvas></div>
+</section>
+</div>
+
+<section id="decomposizioni">
+  <h2>Decomposizioni — confronto metodi</h2>
+  <div class="chart-wrap-tall"><canvas id="c_decomp"></canvas></div>
+</section>
+
+<section id="solver">
+  <h2>Solver — tempo per dimensione</h2>
+  <div class="note">Tutti i solver usano matrici appropriate: Cholesky/LDLT/CG su SPD, gli iterativi su matrice diagonalmente dominante. Il residuo indica la qualità numerica.</div>
+  <div class="grid2">
+    <div><div class="chart-wrap"><canvas id="c_solver_time"></canvas></div></div>
+    <div><div class="chart-wrap"><canvas id="c_solver_res"></canvas></div></div>
+  </div>
+</section>
+
+<section id="iterativi">
+  <h2>Metodi iterativi — analisi</h2>
+  <div class="grid2">
+    <div>
+      <h2 style="font-size:.85rem;color:#555">SOR: residuo e tempo al variare di ω (n=50, matrice SPD+diag.dom.)</h2>
+      <div class="chart-wrap"><canvas id="c_sor"></canvas></div>
+    </div>
+    <div>
+      <h2 style="font-size:.85rem;color:#555">Confronto metodi su stessa matrice SPD+diag.dom. (n=50)</h2>
+      <div class="chart-wrap"><canvas id="c_iter_cmp"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<section id="proprieta">
+  <h2>Proprietà strutturali — tutte (scalabilità)</h2>
+  <div class="note">Ogni proprietà usa la matrice più adatta (es. isSymmetric su matrice simmetrica, isZeroMatrix su matrice zero). isInvertible e isPositiveDefinite sono O(n³) (fanno LUP/Cholesky internamente).</div>
+  <div class="grid2">
+    <div><div class="chart-wrap-tall"><canvas id="c_prop_fast"></canvas></div></div>
+    <div><div class="chart-wrap-tall"><canvas id="c_prop_slow"></canvas></div></div>
+  </div>
+</section>
+
+<section id="tipi">
+  <h2>Confronto tipi numerici — mul e LUP</h2>
+  <div class="grid2">
+    <div><div class="chart-wrap"><canvas id="c_types_mul"></canvas></div></div>
+    <div><div class="chart-wrap"><canvas id="c_complex_solver"></canvas></div></div>
+  </div>
+</section>
+
+<section id="tabelle">
+  <h2>Solver — dettaglio residui</h2>
+  <table><thead><tr><th>Metodo</th><th>Tipo</th><th>n</th><th>Avg ms</th><th>σ ms</th><th>Residuo</th></tr></thead>
+  <tbody><tr><td>LUP (R)</td><td><span class="badge badge-r">Rational</span></td><td>3</td><td>0.18</td><td>0.057</td><td><span class="ok">0.00e+0</span></td></tr>
+<tr><td>LUP (R)</td><td><span class="badge badge-r">Rational</span></td><td>4</td><td>0.24</td><td>0.098</td><td><span class="ok">0.00e+0</span></td></tr>
+<tr><td>LUP (C)</td><td><span class="badge badge-c">Complex</span></td><td>5</td><td>0.484</td><td>0.494</td><td><span class="ok">4.18e-17</span></td></tr>
+<tr><td>LUP (R)</td><td><span class="badge badge-r">Rational</span></td><td>5</td><td>0.29</td><td>0.13</td><td><span class="ok">0.00e+0</span></td></tr>
+<tr><td>QR (C)</td><td><span class="badge badge-c">Complex</span></td><td>5</td><td>0.274</td><td>0.173</td><td><span class="ok">8.36e-17</span></td></tr>
+<tr><td>LUP (R)</td><td><span class="badge badge-r">Rational</span></td><td>6</td><td>3.332</td><td>3.801</td><td><span class="ok">0.00e+0</span></td></tr>
+<tr><td>CG (SPD)</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.125</td><td>0.16</td><td><span class="ok">4.79e-15</span></td></tr>
+<tr><td>Cholesky</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.089</td><td>0.061</td><td><span class="ok">7.31e-17</span></td></tr>
+<tr><td>Gauss-Seidel</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.178</td><td>0.16</td><td><span class="ok">2.86e-12</span></td></tr>
+<tr><td>Jacobi</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.91</td><td>1.544</td><td><span class="ok">1.81e-11</span></td></tr>
+<tr><td>LDLT</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.528</td><td>0.48</td><td><span class="ok">7.31e-17</span></td></tr>
+<tr><td>LU</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.19</td><td>0.137</td><td><span class="ok">8.85e-17</span></td></tr>
+<tr><td>LUP</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.104</td><td>0.067</td><td><span class="ok">8.85e-17</span></td></tr>
+<tr><td>LUP (C)</td><td><span class="badge badge-c">Complex</span></td><td>10</td><td>0.515</td><td>0.343</td><td><span class="ok">7.74e-17</span></td></tr>
+<tr><td>QR</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.177</td><td>0.119</td><td><span class="ok">8.85e-17</span></td></tr>
+<tr><td>QR (C)</td><td><span class="badge badge-c">Complex</span></td><td>10</td><td>2.189</td><td>1.968</td><td><span class="ok">2.10e-16</span></td></tr>
+<tr><td>SOR ω=1.0</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.126</td><td>0.133</td><td><span class="ok">2.86e-12</span></td></tr>
+<tr><td>SOR ω=1.5</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.044</td><td>0.037</td><td><span class="ok">6.14e-12</span></td></tr>
+<tr><td>CG (SPD)</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.088</td><td>0.062</td><td><span class="ok">1.78e-15</span></td></tr>
+<tr><td>Cholesky</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.169</td><td>0.067</td><td><span class="ok">1.05e-16</span></td></tr>
+<tr><td>Gauss-Seidel</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.07</td><td>0.039</td><td><span class="ok">1.54e-12</span></td></tr>
+<tr><td>Jacobi</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.204</td><td>0.062</td><td><span class="ok">2.40e-11</span></td></tr>
+<tr><td>LDLT</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.44</td><td>0.387</td><td><span class="ok">1.05e-16</span></td></tr>
+<tr><td>LU</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.45</td><td>0.453</td><td><span class="ok">2.73e-16</span></td></tr>
+<tr><td>LUP</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.145</td><td>0.091</td><td><span class="ok">2.73e-16</span></td></tr>
+<tr><td>LUP (C)</td><td><span class="badge badge-c">Complex</span></td><td>25</td><td>2.729</td><td>2.221</td><td><span class="ok">1.45e-16</span></td></tr>
+<tr><td>QR</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.182</td><td>0.066</td><td><span class="ok">1.71e-16</span></td></tr>
+<tr><td>QR (C)</td><td><span class="badge badge-c">Complex</span></td><td>25</td><td>1.943</td><td>1.159</td><td><span class="ok">2.30e-16</span></td></tr>
+<tr><td>SOR ω=1.0</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.08</td><td>0.064</td><td><span class="ok">1.54e-12</span></td></tr>
+<tr><td>SOR ω=1.5</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.112</td><td>0.036</td><td><span class="ok">1.41e-11</span></td></tr>
+<tr><td>CG (SPD)</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.296</td><td>0.156</td><td><span class="ok">1.97e-14</span></td></tr>
+<tr><td>Cholesky</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.396</td><td>0.124</td><td><span class="ok">1.53e-16</span></td></tr>
+<tr><td>Gauss-Seidel</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>1.053</td><td>0.663</td><td><span class="ok">5.94e-12</span></td></tr>
+<tr><td>Jacobi</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>7.152</td><td>10.382</td><td><span class="ok">2.81e-11</span></td></tr>
+<tr><td>LDLT</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.397</td><td>0.08</td><td><span class="ok">1.53e-16</span></td></tr>
+<tr><td>LU</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>11.003</td><td>15.342</td><td><span class="ok">2.25e-16</span></td></tr>
+<tr><td>LUP</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>1.692</td><td>0.409</td><td><span class="ok">2.25e-16</span></td></tr>
+<tr><td>LUP (C)</td><td><span class="badge badge-c">Complex</span></td><td>50</td><td>5.696</td><td>1.324</td><td><span class="ok">2.99e-16</span></td></tr>
+<tr><td>QR</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>4.486</td><td>7.466</td><td><span class="ok">2.63e-16</span></td></tr>
+<tr><td>QR (C)</td><td><span class="badge badge-c">Complex</span></td><td>50</td><td>16.406</td><td>3.656</td><td><span class="ok">4.19e-16</span></td></tr>
+<tr><td>SOR ω=1.0</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>2.501</td><td>4.321</td><td><span class="ok">5.94e-12</span></td></tr>
+<tr><td>SOR ω=1.5</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.629</td><td>0.255</td><td><span class="ok">1.38e-11</span></td></tr>
+<tr><td>CG (SPD)</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.977</td><td>0.206</td><td><span class="ok">7.09e-15</span></td></tr>
+<tr><td>Cholesky</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>4.92</td><td>2.484</td><td><span class="ok">3.13e-16</span></td></tr>
+<tr><td>Gauss-Seidel</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.423</td><td>0.63</td><td><span class="ok">1.61e-12</span></td></tr>
+<tr><td>Jacobi</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>8.378</td><td>0.569</td><td><span class="ok">2.82e-11</span></td></tr>
+<tr><td>LDLT</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>2.138</td><td>0.216</td><td><span class="ok">3.65e-16</span></td></tr>
+<tr><td>LU</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>62.888</td><td>32.02</td><td><span class="ok">5.13e-16</span></td></tr>
+<tr><td>LUP</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>3.218</td><td>3.301</td><td><span class="ok">5.13e-16</span></td></tr>
+<tr><td>LUP (C)</td><td><span class="badge badge-c">Complex</span></td><td>100</td><td>136.239</td><td>53.756</td><td><span class="ok">4.87e-16</span></td></tr>
+<tr><td>QR</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>6.887</td><td>3.888</td><td><span class="ok">7.34e-16</span></td></tr>
+<tr><td>QR (C)</td><td><span class="badge badge-c">Complex</span></td><td>100</td><td>660.749</td><td>457.823</td><td><span class="ok">6.14e-16</span></td></tr>
+<tr><td>SOR ω=1.0</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.248</td><td>0.674</td><td><span class="ok">1.61e-12</span></td></tr>
+<tr><td>SOR ω=1.5</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>2.052</td><td>0.769</td><td><span class="ok">1.41e-11</span></td></tr>
+<tr><td>CG (SPD)</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>5.54</td><td>0.955</td><td><span class="ok">1.11e-15</span></td></tr>
+<tr><td>Cholesky</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>74.261</td><td>37.53</td><td><span class="ok">3.90e-16</span></td></tr>
+<tr><td>Gauss-Seidel</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>7.816</td><td>3.739</td><td><span class="ok">1.84e-12</span></td></tr>
+<tr><td>Jacobi</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>52.148</td><td>4.114</td><td><span class="warn">9.04e-8</span></td></tr>
+<tr><td>LDLT</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>66.104</td><td>32.977</td><td><span class="ok">4.46e-16</span></td></tr>
+<tr><td>LU</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>362.367</td><td>154.061</td><td><span class="ok">7.92e-16</span></td></tr>
+<tr><td>LUP</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>11.792</td><td>3.819</td><td><span class="ok">7.92e-16</span></td></tr>
+<tr><td>QR</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>85.838</td><td>13.302</td><td><span class="ok">8.64e-16</span></td></tr>
+<tr><td>SOR ω=1.0</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>11.149</td><td>2.368</td><td><span class="ok">1.84e-12</span></td></tr>
+<tr><td>SOR ω=1.5</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>28.246</td><td>5.527</td><td><span class="ok">7.62e-12</span></td></tr></tbody></table>
+</section>
+
+<section>
+  <h2>Proprietà strutturali — dettaglio tempi</h2>
+  <table><thead><tr><th>Proprietà</th><th>n</th><th>Avg ms</th><th>Min ms</th><th>σ ms</th></tr></thead>
+  <tbody><tr><td>hasFiniteValues</td><td>50</td><td>0.109</td><td>0.041</td><td>0.074</td></tr>
+<tr><td>hasZeroTrace</td><td>50</td><td>0.011</td><td>0.006</td><td>0.009</td></tr>
+<tr><td>isDiagonal</td><td>50</td><td>0.073</td><td>0.023</td><td>0.087</td></tr>
+<tr><td>isDiagonallyDominant</td><td>50</td><td>0.06</td><td>0.032</td><td>0.032</td></tr>
+<tr><td>isIdentity</td><td>50</td><td>0.318</td><td>0.25</td><td>0.114</td></tr>
+<tr><td>isInvertible</td><td>50</td><td>0.299</td><td>0.186</td><td>0.187</td></tr>
+<tr><td>isLowerTriangular</td><td>50</td><td>0.062</td><td>0.025</td><td>0.057</td></tr>
+<tr><td>isOrthogonal</td><td>50</td><td>5.223</td><td>3.851</td><td>1.221</td></tr>
+<tr><td>isPositiveDefinite</td><td>50</td><td>0.206</td><td>0.171</td><td>0.043</td></tr>
+<tr><td>isPositiveSemiDef</td><td>50</td><td>0.077</td><td>0.035</td><td>0.06</td></tr>
+<tr><td>isSingular</td><td>50</td><td>0.078</td><td>0.038</td><td>0.071</td></tr>
+<tr><td>isSquare</td><td>50</td><td>0.024</td><td>0.001</td><td>0.046</td></tr>
+<tr><td>isStochastic</td><td>50</td><td>0.572</td><td>0.313</td><td>0.433</td></tr>
+<tr><td>isSymmetric</td><td>50</td><td>0.034</td><td>0.016</td><td>0.025</td></tr>
+<tr><td>isUpperTriangular</td><td>50</td><td>0.132</td><td>0.034</td><td>0.119</td></tr>
+<tr><td>isZeroMatrix</td><td>50</td><td>0.089</td><td>0.026</td><td>0.074</td></tr>
+<tr><td>hasFiniteValues</td><td>100</td><td>0.172</td><td>0.089</td><td>0.128</td></tr>
+<tr><td>hasZeroTrace</td><td>100</td><td>0.014</td><td>0.007</td><td>0.013</td></tr>
+<tr><td>isDiagonal</td><td>100</td><td>0.222</td><td>0.063</td><td>0.279</td></tr>
+<tr><td>isDiagonallyDominant</td><td>100</td><td>0.633</td><td>0.203</td><td>0.412</td></tr>
+<tr><td>isIdentity</td><td>100</td><td>0.071</td><td>0.051</td><td>0.027</td></tr>
+<tr><td>isInvertible</td><td>100</td><td>2.063</td><td>0.789</td><td>0.687</td></tr>
+<tr><td>isLowerTriangular</td><td>100</td><td>1.516</td><td>0.053</td><td>2.802</td></tr>
+<tr><td>isOrthogonal</td><td>100</td><td>21.572</td><td>9.959</td><td>10.74</td></tr>
+<tr><td>isPositiveDefinite</td><td>100</td><td>1.149</td><td>0.692</td><td>0.489</td></tr>
+<tr><td>isPositiveSemiDef</td><td>100</td><td>0.122</td><td>0.075</td><td>0.075</td></tr>
+<tr><td>isSingular</td><td>100</td><td>0.143</td><td>0.071</td><td>0.092</td></tr>
+<tr><td>isSquare</td><td>100</td><td>0.006</td><td>0</td><td>0.01</td></tr>
+<tr><td>isStochastic</td><td>100</td><td>2.015</td><td>1.122</td><td>1.367</td></tr>
+<tr><td>isSymmetric</td><td>100</td><td>1.663</td><td>0.131</td><td>2.248</td></tr>
+<tr><td>isUpperTriangular</td><td>100</td><td>0.209</td><td>0.1</td><td>0.158</td></tr>
+<tr><td>isZeroMatrix</td><td>100</td><td>0.135</td><td>0.067</td><td>0.127</td></tr>
+<tr><td>hasFiniteValues</td><td>200</td><td>4.064</td><td>2.625</td><td>1.714</td></tr>
+<tr><td>hasZeroTrace</td><td>200</td><td>0.046</td><td>0.014</td><td>0.062</td></tr>
+<tr><td>isDiagonal</td><td>200</td><td>0.486</td><td>0.343</td><td>0.115</td></tr>
+<tr><td>isDiagonallyDominant</td><td>200</td><td>3.307</td><td>1.695</td><td>1.534</td></tr>
+<tr><td>isIdentity</td><td>200</td><td>0.373</td><td>0.294</td><td>0.121</td></tr>
+<tr><td>isInvertible</td><td>200</td><td>33.438</td><td>6.336</td><td>34.027</td></tr>
+<tr><td>isLowerTriangular</td><td>200</td><td>1</td><td>0.913</td><td>0.079</td></tr>
+<tr><td>isOrthogonal</td><td>200</td><td>352.519</td><td>181.448</td><td>246.064</td></tr>
+<tr><td>isPositiveDefinite</td><td>200</td><td>11.069</td><td>8.513</td><td>2.602</td></tr>
+<tr><td>isPositiveSemiDef</td><td>200</td><td>1.982</td><td>0.669</td><td>1.331</td></tr>
+<tr><td>isSingular</td><td>200</td><td>2.363</td><td>0.388</td><td>2.248</td></tr>
+<tr><td>isSquare</td><td>200</td><td>0.003</td><td>0</td><td>0.006</td></tr>
+<tr><td>isStochastic</td><td>200</td><td>24.182</td><td>2.42</td><td>42.269</td></tr>
+<tr><td>isSymmetric</td><td>200</td><td>0.96</td><td>0.569</td><td>0.394</td></tr>
+<tr><td>isUpperTriangular</td><td>200</td><td>0.874</td><td>0.644</td><td>0.195</td></tr>
+<tr><td>isZeroMatrix</td><td>200</td><td>0.275</td><td>0.259</td><td>0.026</td></tr>
+<tr><td>hasFiniteValues</td><td>400</td><td>15.602</td><td>10.321</td><td>9.321</td></tr>
+<tr><td>hasZeroTrace</td><td>400</td><td>0.299</td><td>0.085</td><td>0.213</td></tr>
+<tr><td>isDiagonal</td><td>400</td><td>2.822</td><td>1.224</td><td>1.992</td></tr>
+<tr><td>isDiagonallyDominant</td><td>400</td><td>5.991</td><td>4.104</td><td>2.84</td></tr>
+<tr><td>isIdentity</td><td>400</td><td>2.206</td><td>1.437</td><td>0.555</td></tr>
+<tr><td>isInvertible</td><td>400</td><td>269.198</td><td>67.244</td><td>156.144</td></tr>
+<tr><td>isLowerTriangular</td><td>400</td><td>31.596</td><td>3.099</td><td>34.521</td></tr>
+<tr><td>isOrthogonal</td><td>400</td><td>2774.804</td><td>1852.345</td><td>662.843</td></tr>
+<tr><td>isPositiveDefinite</td><td>400</td><td>74.729</td><td>57.531</td><td>13.482</td></tr>
+<tr><td>isPositiveSemiDef</td><td>400</td><td>8.29</td><td>4.536</td><td>2.641</td></tr>
+<tr><td>isSingular</td><td>400</td><td>7.628</td><td>1.106</td><td>9.056</td></tr>
+<tr><td>isSquare</td><td>400</td><td>0.002</td><td>0</td><td>0.003</td></tr>
+<tr><td>isStochastic</td><td>400</td><td>52.391</td><td>27.657</td><td>27.851</td></tr>
+<tr><td>isSymmetric</td><td>400</td><td>2.928</td><td>2.017</td><td>0.827</td></tr>
+<tr><td>isUpperTriangular</td><td>400</td><td>2.245</td><td>1.868</td><td>0.28</td></tr>
+<tr><td>isZeroMatrix</td><td>400</td><td>2.048</td><td>1.313</td><td>0.832</td></tr></tbody></table>
+</section>
+
+<section>
+  <h2>Tutte le misurazioni</h2>
+  <table><thead><tr><th>Categoria</th><th>Operazione</th><th>Tipo</th><th>n</th><th>Avg ms</th><th>σ ms</th><th>Mem MB</th></tr></thead>
+  <tbody><tr><td>Algebra</td><td>det (R)</td><td><span class="badge badge-r">Rational</span></td><td>3</td><td>1.201</td><td>0.777</td><td>0.0313</td></tr>
+<tr><td>Algebra</td><td>det (R)</td><td><span class="badge badge-r">Rational</span></td><td>4</td><td>0.14</td><td>0.116</td><td>0.2617</td></tr>
+<tr><td>Algebra</td><td>det (C)</td><td><span class="badge badge-c">Complex</span></td><td>5</td><td>0.185</td><td>0.174</td><td>0.1393</td></tr>
+<tr><td>Algebra</td><td>det (R)</td><td><span class="badge badge-r">Rational</span></td><td>5</td><td>0.161</td><td>0.089</td><td>0.0567</td></tr>
+<tr><td>Algebra</td><td>det (R)</td><td><span class="badge badge-r">Rational</span></td><td>6</td><td>0.311</td><td>0.135</td><td>0.1205</td></tr>
+<tr><td>Algebra</td><td>trace</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.011</td><td>0.012</td><td>0.0014</td></tr>
+<tr><td>Algebra</td><td>det (C)</td><td><span class="badge badge-c">Complex</span></td><td>10</td><td>1.396</td><td>2.373</td><td>0.9047</td></tr>
+<tr><td>Algebra</td><td>det (C)</td><td><span class="badge badge-c">Complex</span></td><td>25</td><td>0.237</td><td>0.046</td><td>2.5353</td></tr>
+<tr><td>Algebra</td><td>trace</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.088</td><td>0.1</td><td>0.2003</td></tr>
+<tr><td>Algebra</td><td>det (C)</td><td><span class="badge badge-c">Complex</span></td><td>50</td><td>8.01</td><td>8.365</td><td>4.3468</td></tr>
+<tr><td>Algebra</td><td>trace</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.107</td><td>0.094</td><td>0.0014</td></tr>
+<tr><td>Algebra</td><td>det (C)</td><td><span class="badge badge-c">Complex</span></td><td>100</td><td>119.927</td><td>44.757</td><td>14.5865</td></tr>
+<tr><td>Algebra</td><td>trace</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>0.805</td><td>0.131</td><td>0.0014</td></tr>
+<tr><td>Algebra</td><td>trace</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>3.398</td><td>0.761</td><td>0.0014</td></tr>
+<tr><td>Algebra</td><td>trace</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>32.793</td><td>44.129</td><td>0.0014</td></tr>
+<tr><td>Aritm.</td><td>mul (R)</td><td><span class="badge badge-r">Rational</span></td><td>3</td><td>0.128</td><td>0.036</td><td>0.0368</td></tr>
+<tr><td>Aritm.</td><td>mul (R)</td><td><span class="badge badge-r">Rational</span></td><td>4</td><td>0.467</td><td>0.158</td><td>0.323</td></tr>
+<tr><td>Aritm.</td><td>add (C)</td><td><span class="badge badge-c">Complex</span></td><td>5</td><td>0.043</td><td>0.064</td><td>0.0232</td></tr>
+<tr><td>Aritm.</td><td>mul (C)</td><td><span class="badge badge-c">Complex</span></td><td>5</td><td>0.518</td><td>0.502</td><td>0.5415</td></tr>
+<tr><td>Aritm.</td><td>mul (R)</td><td><span class="badge badge-r">Rational</span></td><td>5</td><td>0.368</td><td>0.093</td><td>0.1761</td></tr>
+<tr><td>Aritm.</td><td>mul (R)</td><td><span class="badge badge-r">Rational</span></td><td>6</td><td>0.418</td><td>0.052</td><td>0.3061</td></tr>
+<tr><td>Aritm.</td><td>add (C)</td><td><span class="badge badge-c">Complex</span></td><td>10</td><td>0.019</td><td>0.014</td><td>0.0432</td></tr>
+<tr><td>Aritm.</td><td>mul (C)</td><td><span class="badge badge-c">Complex</span></td><td>10</td><td>0.548</td><td>0.743</td><td>0.7681</td></tr>
+<tr><td>Aritm.</td><td>add (C)</td><td><span class="badge badge-c">Complex</span></td><td>25</td><td>0.181</td><td>0.217</td><td>0.2636</td></tr>
+<tr><td>Aritm.</td><td>mul (C)</td><td><span class="badge badge-c">Complex</span></td><td>25</td><td>0.483</td><td>0.09</td><td>5.9865</td></tr>
+<tr><td>Aritm.</td><td>add (C)</td><td><span class="badge badge-c">Complex</span></td><td>50</td><td>0.978</td><td>0.773</td><td>1.1508</td></tr>
+<tr><td>Aritm.</td><td>mul (C)</td><td><span class="badge badge-c">Complex</span></td><td>50</td><td>9.937</td><td>6.911</td><td>6.9574</td></tr>
+<tr><td>Aritm.</td><td>add (C)</td><td><span class="badge badge-c">Complex</span></td><td>100</td><td>0.914</td><td>0.081</td><td>4.2805</td></tr>
+<tr><td>Aritm.</td><td>mul (C)</td><td><span class="badge badge-c">Complex</span></td><td>100</td><td>241.534</td><td>89.646</td><td>13.4552</td></tr>
+<tr><td>Aritmetica</td><td>add</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.133</td><td>0.053</td><td>0.0572</td></tr>
+<tr><td>Aritmetica</td><td>sub</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.145</td><td>0.133</td><td>0.1376</td></tr>
+<tr><td>Aritmetica</td><td>mul</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.066</td><td>0.042</td><td>0.0441</td></tr>
+<tr><td>Aritmetica</td><td>mul scalar</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.044</td><td>0.03</td><td>0.0478</td></tr>
+<tr><td>Aritmetica</td><td>pow(2)</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>1.543</td><td>2.08</td><td>0.1977</td></tr>
+<tr><td>Aritmetica</td><td>add</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.43</td><td>0.053</td><td>0.9559</td></tr>
+<tr><td>Aritmetica</td><td>sub</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.513</td><td>0.076</td><td>0.9559</td></tr>
+<tr><td>Aritmetica</td><td>mul</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>5.148</td><td>6.118</td><td>0.9559</td></tr>
+<tr><td>Aritmetica</td><td>mul scalar</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>2.442</td><td>3.325</td><td>1.0152</td></tr>
+<tr><td>Aritmetica</td><td>pow(2)</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>1.804</td><td>0.485</td><td>1.2117</td></tr>
+<tr><td>Aritmetica</td><td>add</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>4.753</td><td>4.634</td><td>3.2555</td></tr>
+<tr><td>Aritmetica</td><td>sub</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>3.062</td><td>0.95</td><td>3.8173</td></tr>
+<tr><td>Aritmetica</td><td>mul</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>2.465</td><td>0.47</td><td>3.2081</td></tr>
+<tr><td>Aritmetica</td><td>mul scalar</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.733</td><td>1.086</td><td>3.6064</td></tr>
+<tr><td>Aritmetica</td><td>pow(2)</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>7.713</td><td>2.894</td><td>4.1705</td></tr>
+<tr><td>Aritmetica</td><td>add</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>70.085</td><td>107.945</td><td>12.2095</td></tr>
+<tr><td>Aritmetica</td><td>sub</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>22.015</td><td>11.716</td><td>14.4059</td></tr>
+<tr><td>Aritmetica</td><td>mul</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>27.351</td><td>12.579</td><td>13.0756</td></tr>
+<tr><td>Aritmetica</td><td>mul scalar</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>46.118</td><td>69.529</td><td>14.232</td></tr>
+<tr><td>Aritmetica</td><td>pow(2)</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>64.388</td><td>18.763</td><td>13.2942</td></tr>
+<tr><td>Aritmetica</td><td>add</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>79.991</td><td>42.835</td><td>40.2217</td></tr>
+<tr><td>Aritmetica</td><td>sub</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>81.361</td><td>26.629</td><td>40.0782</td></tr>
+<tr><td>Aritmetica</td><td>mul</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>187.835</td><td>60.798</td><td>40.0842</td></tr>
+<tr><td>Aritmetica</td><td>mul scalar</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>86.716</td><td>33.414</td><td>40.0536</td></tr>
+<tr><td>Aritmetica</td><td>pow(2)</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>851.724</td><td>164.096</td><td>53.4099</td></tr>
+<tr><td>Aritmetica</td><td>add</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>604.53</td><td>333.013</td><td>109.873</td></tr>
+<tr><td>Aritmetica</td><td>sub</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>273.938</td><td>118.168</td><td>109.873</td></tr>
+<tr><td>Aritmetica</td><td>mul</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>580.088</td><td>156.433</td><td>109.873</td></tr>
+<tr><td>Aritmetica</td><td>mul scalar</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>263.016</td><td>78.518</td><td>109.873</td></tr>
+<tr><td>Aritmetica</td><td>pow(2)</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>2547.533</td><td>711.537</td><td>214.2362</td></tr>
+<tr><td>Confronto</td><td>mul F64</td><td><span class="badge badge-f">Float64M</span></td><td>5</td><td>2.546</td><td>2.789</td><td>0.0117</td></tr>
+<tr><td>Confronto</td><td>mul Cmx</td><td><span class="badge badge-c">Complex</span></td><td>5</td><td>9.067</td><td>17.557</td><td>0.0976</td></tr>
+<tr><td>Confronto</td><td>mul Rat</td><td><span class="badge badge-r">Rational</span></td><td>5</td><td>0.306</td><td>0.241</td><td>0.1318</td></tr>
+<tr><td>Confronto</td><td>mul F64</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.835</td><td>1.585</td><td>0.0403</td></tr>
+<tr><td>Confronto</td><td>mul Cmx</td><td><span class="badge badge-c">Complex</span></td><td>10</td><td>0.148</td><td>0.043</td><td>0.7681</td></tr>
+<tr><td>Confronto</td><td>mul Rat</td><td><span class="badge badge-r">Rational</span></td><td>10</td><td>0.866</td><td>0.038</td><td>1.0703</td></tr>
+<tr><td>Confronto</td><td>mul F64</td><td><span class="badge badge-f">Float64M</span></td><td>20</td><td>0.439</td><td>0.657</td><td>0.1547</td></tr>
+<tr><td>Confronto</td><td>mul Cmx</td><td><span class="badge badge-c">Complex</span></td><td>20</td><td>1.802</td><td>1.02</td><td>6.1209</td></tr>
+<tr><td>Confronto</td><td>mul Rat</td><td><span class="badge badge-r">Rational</span></td><td>20</td><td>29.142</td><td>8.088</td><td>0.4868</td></tr>
+<tr><td>Confronto</td><td>mul F64</td><td><span class="badge badge-f">Float64M</span></td><td>30</td><td>6.036</td><td>11.526</td><td>0.3631</td></tr>
+<tr><td>Confronto</td><td>mul Cmx</td><td><span class="badge badge-c">Complex</span></td><td>30</td><td>11.732</td><td>13.041</td><td>4.9726</td></tr>
+<tr><td>Confronto</td><td>mul Rat</td><td><span class="badge badge-r">Rational</span></td><td>30</td><td>199.741</td><td>40.086</td><td>10.6854</td></tr>
+<tr><td>Decomp.</td><td>LUP (C)</td><td><span class="badge badge-c">Complex</span></td><td>5</td><td>0.136</td><td>0.086</td><td>0.1254</td></tr>
+<tr><td>Decomp.</td><td>QR (C)</td><td><span class="badge badge-c">Complex</span></td><td>5</td><td>0.323</td><td>0.212</td><td>0.3966</td></tr>
+<tr><td>Decomp.</td><td>LUP</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.049</td><td>0.042</td><td>0.0491</td></tr>
+<tr><td>Decomp.</td><td>LU</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.159</td><td>0.051</td><td>0.3506</td></tr>
+<tr><td>Decomp.</td><td>LU total</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.304</td><td>0.091</td><td>0.4162</td></tr>
+<tr><td>Decomp.</td><td>QR</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.19</td><td>0.214</td><td>0.0802</td></tr>
+<tr><td>Decomp.</td><td>Cholesky</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.046</td><td>0.044</td><td>0.041</td></tr>
+<tr><td>Decomp.</td><td>LDLT</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>1.054</td><td>1.988</td><td>0.0498</td></tr>
+<tr><td>Decomp.</td><td>tril</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.021</td><td>0.019</td><td>0.0051</td></tr>
+<tr><td>Decomp.</td><td>triu</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.014</td><td>0.01</td><td>0.0051</td></tr>
+<tr><td>Decomp.</td><td>LUP (C)</td><td><span class="badge badge-c">Complex</span></td><td>10</td><td>0.223</td><td>0.042</td><td>0.6811</td></tr>
+<tr><td>Decomp.</td><td>QR (C)</td><td><span class="badge badge-c">Complex</span></td><td>10</td><td>5.216</td><td>6.742</td><td>1.1808</td></tr>
+<tr><td>Decomp.</td><td>LUP</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.142</td><td>0.035</td><td>0.2744</td></tr>
+<tr><td>Decomp.</td><td>LU</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>5.471</td><td>5.035</td><td>0.1273</td></tr>
+<tr><td>Decomp.</td><td>LU total</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>3.251</td><td>0.982</td><td>0.5535</td></tr>
+<tr><td>Decomp.</td><td>QR</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>6.83</td><td>8.264</td><td>0.4807</td></tr>
+<tr><td>Decomp.</td><td>Cholesky</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.266</td><td>0.166</td><td>0.4506</td></tr>
+<tr><td>Decomp.</td><td>LDLT</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.449</td><td>0.223</td><td>0.2752</td></tr>
+<tr><td>Decomp.</td><td>tril</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.073</td><td>0.057</td><td>0.0251</td></tr>
+<tr><td>Decomp.</td><td>triu</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.032</td><td>0.014</td><td>0.0251</td></tr>
+<tr><td>Decomp.</td><td>LUP (C)</td><td><span class="badge badge-c">Complex</span></td><td>25</td><td>0.671</td><td>0.488</td><td>2.5091</td></tr>
+<tr><td>Decomp.</td><td>QR (C)</td><td><span class="badge badge-c">Complex</span></td><td>25</td><td>1.416</td><td>0.227</td><td>7.6529</td></tr>
+<tr><td>Decomp.</td><td>LUP</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.832</td><td>0.243</td><td>1.076</td></tr>
+<tr><td>Decomp.</td><td>LU</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>4.975</td><td>3.798</td><td>0.9614</td></tr>
+<tr><td>Decomp.</td><td>LU total</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>5.615</td><td>3.056</td><td>0.439</td></tr>
+<tr><td>Decomp.</td><td>QR</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>2.058</td><td>0.983</td><td>1.5344</td></tr>
+<tr><td>Decomp.</td><td>Cholesky</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.457</td><td>0.059</td><td>0.9566</td></tr>
+<tr><td>Decomp.</td><td>LDLT</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.814</td><td>0.16</td><td>1.1442</td></tr>
+<tr><td>Decomp.</td><td>tril</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.128</td><td>0.052</td><td>0.0966</td></tr>
+<tr><td>Decomp.</td><td>triu</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.1</td><td>0.018</td><td>0.0966</td></tr>
+<tr><td>Decomp.</td><td>LUP (C)</td><td><span class="badge badge-c">Complex</span></td><td>50</td><td>6.449</td><td>4.566</td><td>5.8387</td></tr>
+<tr><td>Decomp.</td><td>QR (C)</td><td><span class="badge badge-c">Complex</span></td><td>50</td><td>19.051</td><td>15.799</td><td>10.4289</td></tr>
+<tr><td>Decomp.</td><td>LUP</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.049</td><td>0.168</td><td>3.6363</td></tr>
+<tr><td>Decomp.</td><td>LU</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>98.472</td><td>64.984</td><td>2.1797</td></tr>
+<tr><td>Decomp.</td><td>LU total</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>166.201</td><td>60.853</td><td>17.231</td></tr>
+<tr><td>Decomp.</td><td>QR</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>6.535</td><td>2.53</td><td>6.1366</td></tr>
+<tr><td>Decomp.</td><td>Cholesky</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.923</td><td>0.27</td><td>3.0683</td></tr>
+<tr><td>Decomp.</td><td>LDLT</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>7.789</td><td>4.854</td><td>3.6416</td></tr>
+<tr><td>Decomp.</td><td>tril</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.135</td><td>0.027</td><td>0.3986</td></tr>
+<tr><td>Decomp.</td><td>triu</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.192</td><td>0.134</td><td>0.3986</td></tr>
+<tr><td>Decomp.</td><td>LUP (C)</td><td><span class="badge badge-c">Complex</span></td><td>100</td><td>81.066</td><td>13.544</td><td>5.4284</td></tr>
+<tr><td>Decomp.</td><td>QR (C)</td><td><span class="badge badge-c">Complex</span></td><td>100</td><td>183.359</td><td>62.885</td><td>17.6198</td></tr>
+<tr><td>Decomp.</td><td>LUP</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>19.819</td><td>19.124</td><td>13.7985</td></tr>
+<tr><td>Decomp.</td><td>LU</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>746.391</td><td>170.089</td><td>23.616</td></tr>
+<tr><td>Decomp.</td><td>LU total</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>1278.908</td><td>576.651</td><td>27.7852</td></tr>
+<tr><td>Decomp.</td><td>QR</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>63.3</td><td>34.633</td><td>10.1424</td></tr>
+<tr><td>Decomp.</td><td>Cholesky</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>44.587</td><td>61.927</td><td>12.2103</td></tr>
+<tr><td>Decomp.</td><td>LDLT</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>15.057</td><td>8.07</td><td>13.791</td></tr>
+<tr><td>Decomp.</td><td>tril</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>21.285</td><td>39.002</td><td>1.5271</td></tr>
+<tr><td>Decomp.</td><td>triu</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>2.848</td><td>2.134</td><td>1.5271</td></tr>
+<tr><td>DotOps</td><td>dotMul</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>2.44</td><td>1.977</td><td>0.0448</td></tr>
+<tr><td>DotOps</td><td>dotDiv</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.062</td><td>0.076</td><td>0.0414</td></tr>
+<tr><td>DotOps</td><td>dotPow(2)</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.069</td><td>0.085</td><td>0.0405</td></tr>
+<tr><td>DotOps</td><td>dotMul</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>4.782</td><td>6.231</td><td>1.0782</td></tr>
+<tr><td>DotOps</td><td>dotDiv</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.474</td><td>0.159</td><td>0.9593</td></tr>
+<tr><td>DotOps</td><td>dotPow(2)</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>2.275</td><td>2.277</td><td>0.9561</td></tr>
+<tr><td>DotOps</td><td>dotMul</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>2.007</td><td>0.117</td><td>3.8183</td></tr>
+<tr><td>DotOps</td><td>dotDiv</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.393</td><td>0.728</td><td>3.254</td></tr>
+<tr><td>DotOps</td><td>dotPow(2)</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>2.114</td><td>0.201</td><td>3.8369</td></tr>
+<tr><td>DotOps</td><td>dotMul</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>5.91</td><td>1.505</td><td>13.0826</td></tr>
+<tr><td>DotOps</td><td>dotDiv</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>4.74</td><td>0.441</td><td>12.2106</td></tr>
+<tr><td>DotOps</td><td>dotPow(2)</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>9.481</td><td>3.582</td><td>14.3867</td></tr>
+<tr><td>DotOps</td><td>dotMul</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>36.096</td><td>6.456</td><td>40.054</td></tr>
+<tr><td>DotOps</td><td>dotDiv</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>32.39</td><td>7.742</td><td>40.0384</td></tr>
+<tr><td>DotOps</td><td>dotPow(2)</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>33.672</td><td>7.293</td><td>40.0936</td></tr>
+<tr><td>DotOps</td><td>dotMul</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>466.315</td><td>292.554</td><td>109.8741</td></tr>
+<tr><td>DotOps</td><td>dotDiv</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>541.788</td><td>356.062</td><td>109.8741</td></tr>
+<tr><td>DotOps</td><td>dotPow(2)</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>765.476</td><td>270.938</td><td>109.8732</td></tr>
+<tr><td>Gallery</td><td>wathen 10×10</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>9.63</td><td>7.071</td><td>7.3074</td></tr>
+<tr><td>Gallery</td><td>hilbert</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.479</td><td>0.801</td><td>3.8082</td></tr>
+<tr><td>Gallery</td><td>pascal (float)</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>4.679</td><td>2.454</td><td>3.5718</td></tr>
+<tr><td>Gallery</td><td>pascal (exact)</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>360.63</td><td>115.384</td><td>18.606</td></tr>
+<tr><td>Gallery</td><td>magic</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.311</td><td>0.027</td><td>3.0683</td></tr>
+<tr><td>Gallery</td><td>lehmer</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>3.889</td><td>5.175</td><td>3.3561</td></tr>
+<tr><td>Gallery</td><td>minij</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.21</td><td>0.763</td><td>3.0679</td></tr>
+<tr><td>Gallery</td><td>fiedler</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.402</td><td>0.154</td><td>3.0683</td></tr>
+<tr><td>Gallery</td><td>wilkinson</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.282</td><td>0.167</td><td>0.6104</td></tr>
+<tr><td>Gallery</td><td>grcar</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.719</td><td>0.77</td><td>0.6117</td></tr>
+<tr><td>Gallery</td><td>kahan</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.053</td><td>0.307</td><td>1.83</td></tr>
+<tr><td>Gallery</td><td>invhess</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>3.623</td><td>5.273</td><td>3.3039</td></tr>
+<tr><td>Gallery</td><td>cauchy</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.765</td><td>1.361</td><td>3.9608</td></tr>
+<tr><td>Gallery</td><td>tridiag</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>9.476</td><td>5.235</td><td>0.5891</td></tr>
+<tr><td>Gallery</td><td>binomial</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>118.001</td><td>46.961</td><td>4.2474</td></tr>
+<tr><td>Iterativi</td><td>SOR ω=0.5</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.457</td><td>0.379</td><td>0.038</td></tr>
+<tr><td>Iterativi</td><td>SOR ω=0.8</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.3</td><td>0.109</td><td>0.038</td></tr>
+<tr><td>Iterativi</td><td>SOR ω=1</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.243</td><td>0.128</td><td>0.038</td></tr>
+<tr><td>Iterativi</td><td>SOR ω=1.2</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.361</td><td>0.209</td><td>0.038</td></tr>
+<tr><td>Iterativi</td><td>SOR ω=1.5</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.458</td><td>0.113</td><td>0.038</td></tr>
+<tr><td>Iterativi</td><td>SOR ω=1.8</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>1.576</td><td>0.57</td><td>0.038</td></tr>
+<tr><td>Iterativi</td><td>SOR ω=1.9</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>2.522</td><td>0.639</td><td>0.038</td></tr>
+<tr><td>Iterativi vs Diretti</td><td>Jacobi</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>2.537</td><td>1.367</td><td>0.0381</td></tr>
+<tr><td>Iterativi vs Diretti</td><td>Gauss-Seidel</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.26</td><td>0.073</td><td>0.0382</td></tr>
+<tr><td>Iterativi vs Diretti</td><td>SOR ω=1.0</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.216</td><td>0.118</td><td>0.0342</td></tr>
+<tr><td>Iterativi vs Diretti</td><td>SOR ω=1.5</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>1.347</td><td>1.126</td><td>0.0342</td></tr>
+<tr><td>Iterativi vs Diretti</td><td>CG</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.479</td><td>0.56</td><td>0.038</td></tr>
+<tr><td>Iterativi vs Diretti</td><td>Cholesky</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>3.558</td><td>2.588</td><td>0.9193</td></tr>
+<tr><td>Iterativi vs Diretti</td><td>LUP</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>1.998</td><td>1.264</td><td>0.9279</td></tr>
+<tr><td>Proprietà</td><td>isSquare</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.024</td><td>0.046</td><td>0.0007</td></tr>
+<tr><td>Proprietà</td><td>isSymmetric</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.034</td><td>0.025</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isUpperTriangular</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.132</td><td>0.119</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isLowerTriangular</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.062</td><td>0.057</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isDiagonal</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.073</td><td>0.087</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isIdentity</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.318</td><td>0.114</td><td>0.6683</td></tr>
+<tr><td>Proprietà</td><td>isOrthogonal</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>5.223</td><td>1.221</td><td>1.2953</td></tr>
+<tr><td>Proprietà</td><td>isZeroMatrix</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.089</td><td>0.074</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isInvertible</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.299</td><td>0.187</td><td>0.8901</td></tr>
+<tr><td>Proprietà</td><td>isSingular</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.078</td><td>0.071</td><td>0.0065</td></tr>
+<tr><td>Proprietà</td><td>isPositiveDefinite</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.206</td><td>0.043</td><td>0.7663</td></tr>
+<tr><td>Proprietà</td><td>isPositiveSemiDef</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.077</td><td>0.06</td><td>0.0092</td></tr>
+<tr><td>Proprietà</td><td>isDiagonallyDominant</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.06</td><td>0.032</td><td>0.0098</td></tr>
+<tr><td>Proprietà</td><td>hasZeroTrace</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.011</td><td>0.009</td><td>0.014</td></tr>
+<tr><td>Proprietà</td><td>hasFiniteValues</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.109</td><td>0.074</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isStochastic</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.572</td><td>0.433</td><td>0.682</td></tr>
+<tr><td>Proprietà</td><td>isSquare</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.006</td><td>0.01</td><td>0.0007</td></tr>
+<tr><td>Proprietà</td><td>isSymmetric</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.663</td><td>2.248</td><td>0.2948</td></tr>
+<tr><td>Proprietà</td><td>isUpperTriangular</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.209</td><td>0.158</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isLowerTriangular</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.516</td><td>2.802</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isDiagonal</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.222</td><td>0.279</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isIdentity</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.071</td><td>0.027</td><td>0.0007</td></tr>
+<tr><td>Proprietà</td><td>isOrthogonal</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>21.572</td><td>10.74</td><td>9.0154</td></tr>
+<tr><td>Proprietà</td><td>isZeroMatrix</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.135</td><td>0.127</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isInvertible</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>2.063</td><td>0.687</td><td>4.0941</td></tr>
+<tr><td>Proprietà</td><td>isSingular</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.143</td><td>0.092</td><td>0.0067</td></tr>
+<tr><td>Proprietà</td><td>isPositiveDefinite</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.149</td><td>0.489</td><td>3.0661</td></tr>
+<tr><td>Proprietà</td><td>isPositiveSemiDef</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.122</td><td>0.075</td><td>0.0015</td></tr>
+<tr><td>Proprietà</td><td>isDiagonallyDominant</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.633</td><td>0.412</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>hasZeroTrace</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.014</td><td>0.013</td><td>0.0274</td></tr>
+<tr><td>Proprietà</td><td>hasFiniteValues</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.172</td><td>0.128</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isStochastic</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>2.015</td><td>1.367</td><td>2.6711</td></tr>
+<tr><td>Proprietà</td><td>isSquare</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>0.003</td><td>0.006</td><td>0.0007</td></tr>
+<tr><td>Proprietà</td><td>isSymmetric</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>0.96</td><td>0.394</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isUpperTriangular</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>0.874</td><td>0.195</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isLowerTriangular</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>1</td><td>0.079</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isDiagonal</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>0.486</td><td>0.115</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isIdentity</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>0.373</td><td>0.121</td><td>0.0007</td></tr>
+<tr><td>Proprietà</td><td>isOrthogonal</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>352.519</td><td>246.064</td><td>3.852</td></tr>
+<tr><td>Proprietà</td><td>isZeroMatrix</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>0.275</td><td>0.026</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isInvertible</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>33.438</td><td>34.027</td><td>13.7985</td></tr>
+<tr><td>Proprietà</td><td>isSingular</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>2.363</td><td>2.248</td><td>0.0516</td></tr>
+<tr><td>Proprietà</td><td>isPositiveDefinite</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>11.069</td><td>2.602</td><td>12.2108</td></tr>
+<tr><td>Proprietà</td><td>isPositiveSemiDef</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>1.982</td><td>1.331</td><td>0.0015</td></tr>
+<tr><td>Proprietà</td><td>isDiagonallyDominant</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>3.307</td><td>1.534</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>hasZeroTrace</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>0.046</td><td>0.062</td><td>0.0541</td></tr>
+<tr><td>Proprietà</td><td>hasFiniteValues</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>4.064</td><td>1.714</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isStochastic</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>24.182</td><td>42.269</td><td>10.6823</td></tr>
+<tr><td>Proprietà</td><td>isSquare</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>0.002</td><td>0.003</td><td>0.0007</td></tr>
+<tr><td>Proprietà</td><td>isSymmetric</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>2.928</td><td>0.827</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isUpperTriangular</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>2.245</td><td>0.28</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isLowerTriangular</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>31.596</td><td>34.521</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isDiagonal</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>2.822</td><td>1.992</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isIdentity</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>2.206</td><td>0.555</td><td>0.0007</td></tr>
+<tr><td>Proprietà</td><td>isOrthogonal</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>2774.804</td><td>662.843</td><td>9.4423</td></tr>
+<tr><td>Proprietà</td><td>isZeroMatrix</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>2.048</td><td>0.832</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isInvertible</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>269.198</td><td>156.144</td><td>45.0788</td></tr>
+<tr><td>Proprietà</td><td>isSingular</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>7.628</td><td>9.056</td><td>0.2504</td></tr>
+<tr><td>Proprietà</td><td>isPositiveDefinite</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>74.729</td><td>13.482</td><td>40.067</td></tr>
+<tr><td>Proprietà</td><td>isPositiveSemiDef</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>8.29</td><td>2.641</td><td>0.0015</td></tr>
+<tr><td>Proprietà</td><td>isDiagonallyDominant</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>5.991</td><td>2.84</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>hasZeroTrace</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>0.299</td><td>0.213</td><td>0.1075</td></tr>
+<tr><td>Proprietà</td><td>hasFiniteValues</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>15.602</td><td>9.321</td><td>0.0012</td></tr>
+<tr><td>Proprietà</td><td>isStochastic</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>52.391</td><td>27.851</td><td>11.2672</td></tr>
+<tr><td>Scalabilità</td><td>mul A×B</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.055</td><td>0.059</td><td>0.0198</td></tr>
+<tr><td>Scalabilità</td><td>mul A×B</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.807</td><td>0.885</td><td>0.2735</td></tr>
+<tr><td>Scalabilità</td><td>mul A×B</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.399</td><td>0.057</td><td>0.4593</td></tr>
+<tr><td>Scalabilità</td><td>mul A×B</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>2.491</td><td>1.229</td><td>1.8394</td></tr>
+<tr><td>Scalabilità</td><td>mul A×B</td><td><span class="badge badge-f">Float64M</span></td><td>150</td><td>9.169</td><td>1.363</td><td>4.1215</td></tr>
+<tr><td>Scalabilità</td><td>mul A×B</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>34.453</td><td>8.142</td><td>7.3259</td></tr>
+<tr><td>Scalabilità</td><td>mul A×B</td><td><span class="badge badge-f">Float64M</span></td><td>300</td><td>249.707</td><td>33.726</td><td>16.4814</td></tr>
+<tr><td>Scalabilità</td><td>mul A×B</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>146.989</td><td>57.568</td><td>20.504</td></tr>
+<tr><td>Scalabilità</td><td>mul A×B</td><td><span class="badge badge-f">Float64M</span></td><td>500</td><td>190.638</td><td>53.24</td><td>30.6882</td></tr>
+<tr><td>Solver</td><td>LUP (R)</td><td><span class="badge badge-r">Rational</span></td><td>3</td><td>0.18</td><td>0.057</td><td>0.2663</td></tr>
+<tr><td>Solver</td><td>LUP (R)</td><td><span class="badge badge-r">Rational</span></td><td>4</td><td>0.24</td><td>0.098</td><td>0.0626</td></tr>
+<tr><td>Solver</td><td>LUP (C)</td><td><span class="badge badge-c">Complex</span></td><td>5</td><td>0.484</td><td>0.494</td><td>0.5368</td></tr>
+<tr><td>Solver</td><td>QR (C)</td><td><span class="badge badge-c">Complex</span></td><td>5</td><td>0.274</td><td>0.173</td><td>0.3939</td></tr>
+<tr><td>Solver</td><td>LUP (R)</td><td><span class="badge badge-r">Rational</span></td><td>5</td><td>0.29</td><td>0.13</td><td>0.2172</td></tr>
+<tr><td>Solver</td><td>LUP (R)</td><td><span class="badge badge-r">Rational</span></td><td>6</td><td>3.332</td><td>3.801</td><td>0.1713</td></tr>
+<tr><td>Solver</td><td>LUP</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.104</td><td>0.067</td><td>0.1127</td></tr>
+<tr><td>Solver</td><td>LU</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.19</td><td>0.137</td><td>0.4032</td></tr>
+<tr><td>Solver</td><td>QR</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.177</td><td>0.119</td><td>0.1387</td></tr>
+<tr><td>Solver</td><td>Cholesky</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.089</td><td>0.061</td><td>0.108</td></tr>
+<tr><td>Solver</td><td>LDLT</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.528</td><td>0.48</td><td>0.1547</td></tr>
+<tr><td>Solver</td><td>Jacobi</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.91</td><td>1.544</td><td>0.281</td></tr>
+<tr><td>Solver</td><td>Gauss-Seidel</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.178</td><td>0.16</td><td>0.4574</td></tr>
+<tr><td>Solver</td><td>SOR ω=1.0</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.126</td><td>0.133</td><td>0.447</td></tr>
+<tr><td>Solver</td><td>SOR ω=1.5</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.044</td><td>0.037</td><td>0.0105</td></tr>
+<tr><td>Solver</td><td>CG (SPD)</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.125</td><td>0.16</td><td>0.4276</td></tr>
+<tr><td>Solver</td><td>LUP (C)</td><td><span class="badge badge-c">Complex</span></td><td>10</td><td>0.515</td><td>0.343</td><td>0.6593</td></tr>
+<tr><td>Solver</td><td>QR (C)</td><td><span class="badge badge-c">Complex</span></td><td>10</td><td>2.189</td><td>1.968</td><td>1.3412</td></tr>
+<tr><td>Solver</td><td>LUP</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.145</td><td>0.091</td><td>0.2594</td></tr>
+<tr><td>Solver</td><td>LU</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.45</td><td>0.453</td><td>1.5498</td></tr>
+<tr><td>Solver</td><td>QR</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.182</td><td>0.066</td><td>0.439</td></tr>
+<tr><td>Solver</td><td>Cholesky</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.169</td><td>0.067</td><td>0.2492</td></tr>
+<tr><td>Solver</td><td>LDLT</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.44</td><td>0.387</td><td>0.5665</td></tr>
+<tr><td>Solver</td><td>Jacobi</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.204</td><td>0.062</td><td>0.021</td></tr>
+<tr><td>Solver</td><td>Gauss-Seidel</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.07</td><td>0.039</td><td>0.021</td></tr>
+<tr><td>Solver</td><td>SOR ω=1.0</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.08</td><td>0.064</td><td>0.0208</td></tr>
+<tr><td>Solver</td><td>SOR ω=1.5</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.112</td><td>0.036</td><td>0.0208</td></tr>
+<tr><td>Solver</td><td>CG (SPD)</td><td><span class="badge badge-f">Float64M</span></td><td>25</td><td>0.088</td><td>0.062</td><td>0.021</td></tr>
+<tr><td>Solver</td><td>LUP (C)</td><td><span class="badge badge-c">Complex</span></td><td>25</td><td>2.729</td><td>2.221</td><td>3.9133</td></tr>
+<tr><td>Solver</td><td>QR (C)</td><td><span class="badge badge-c">Complex</span></td><td>25</td><td>1.943</td><td>1.159</td><td>9.3275</td></tr>
+<tr><td>Solver</td><td>LUP</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>1.692</td><td>0.409</td><td>0.9357</td></tr>
+<tr><td>Solver</td><td>LU</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>11.003</td><td>15.342</td><td>11.9158</td></tr>
+<tr><td>Solver</td><td>QR</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>4.486</td><td>7.466</td><td>1.6849</td></tr>
+<tr><td>Solver</td><td>Cholesky</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.396</td><td>0.124</td><td>0.9208</td></tr>
+<tr><td>Solver</td><td>LDLT</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.397</td><td>0.08</td><td>1.568</td></tr>
+<tr><td>Solver</td><td>Jacobi</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>7.152</td><td>10.382</td><td>0.0381</td></tr>
+<tr><td>Solver</td><td>Gauss-Seidel</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>1.053</td><td>0.663</td><td>0.0382</td></tr>
+<tr><td>Solver</td><td>SOR ω=1.0</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>2.501</td><td>4.321</td><td>0.038</td></tr>
+<tr><td>Solver</td><td>SOR ω=1.5</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.629</td><td>0.255</td><td>0.038</td></tr>
+<tr><td>Solver</td><td>CG (SPD)</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.296</td><td>0.156</td><td>0.0381</td></tr>
+<tr><td>Solver</td><td>LUP (C)</td><td><span class="badge badge-c">Complex</span></td><td>50</td><td>5.696</td><td>1.324</td><td>7.9326</td></tr>
+<tr><td>Solver</td><td>QR (C)</td><td><span class="badge badge-c">Complex</span></td><td>50</td><td>16.406</td><td>3.656</td><td>3.7797</td></tr>
+<tr><td>Solver</td><td>LUP</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>3.218</td><td>3.301</td><td>3.854</td></tr>
+<tr><td>Solver</td><td>LU</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>62.888</td><td>32.02</td><td>2.3927</td></tr>
+<tr><td>Solver</td><td>QR</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>6.887</td><td>3.888</td><td>6.7355</td></tr>
+<tr><td>Solver</td><td>Cholesky</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>4.92</td><td>2.484</td><td>3.6555</td></tr>
+<tr><td>Solver</td><td>LDLT</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>2.138</td><td>0.216</td><td>6.1801</td></tr>
+<tr><td>Solver</td><td>Jacobi</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>8.378</td><td>0.569</td><td>0.0724</td></tr>
+<tr><td>Solver</td><td>Gauss-Seidel</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.423</td><td>0.63</td><td>0.0725</td></tr>
+<tr><td>Solver</td><td>SOR ω=1.0</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.248</td><td>0.674</td><td>0.0723</td></tr>
+<tr><td>Solver</td><td>SOR ω=1.5</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>2.052</td><td>0.769</td><td>0.0723</td></tr>
+<tr><td>Solver</td><td>CG (SPD)</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.977</td><td>0.206</td><td>0.0724</td></tr>
+<tr><td>Solver</td><td>LUP (C)</td><td><span class="badge badge-c">Complex</span></td><td>100</td><td>136.239</td><td>53.756</td><td>2.4521</td></tr>
+<tr><td>Solver</td><td>QR (C)</td><td><span class="badge badge-c">Complex</span></td><td>100</td><td>660.749</td><td>457.823</td><td>25.3333</td></tr>
+<tr><td>Solver</td><td>LUP</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>11.792</td><td>3.819</td><td>14.1759</td></tr>
+<tr><td>Solver</td><td>LU</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>362.367</td><td>154.061</td><td>24.7786</td></tr>
+<tr><td>Solver</td><td>QR</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>85.838</td><td>13.302</td><td>10.8825</td></tr>
+<tr><td>Solver</td><td>Cholesky</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>74.261</td><td>37.53</td><td>13.9243</td></tr>
+<tr><td>Solver</td><td>LDLT</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>66.104</td><td>32.977</td><td>9.4646</td></tr>
+<tr><td>Solver</td><td>Jacobi</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>52.148</td><td>4.114</td><td>0.1411</td></tr>
+<tr><td>Solver</td><td>Gauss-Seidel</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>7.816</td><td>3.739</td><td>0.1412</td></tr>
+<tr><td>Solver</td><td>SOR ω=1.0</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>11.149</td><td>2.368</td><td>0.141</td></tr>
+<tr><td>Solver</td><td>SOR ω=1.5</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>28.246</td><td>5.527</td><td>0.141</td></tr>
+<tr><td>Solver</td><td>CG (SPD)</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>5.54</td><td>0.955</td><td>0.1411</td></tr>
+<tr><td>Stat.</td><td>norm Fro (C)</td><td><span class="badge badge-c">Complex</span></td><td>5</td><td>0.119</td><td>0.166</td><td>0.0453</td></tr>
+<tr><td>Stat.</td><td>sum col</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.033</td><td>0.039</td><td>0.0099</td></tr>
+<tr><td>Stat.</td><td>sum row</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.021</td><td>0.025</td><td>0.006</td></tr>
+<tr><td>Stat.</td><td>mean</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.117</td><td>0.171</td><td>0.0265</td></tr>
+<tr><td>Stat.</td><td>max</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.137</td><td>0.14</td><td>0.0623</td></tr>
+<tr><td>Stat.</td><td>totalSum</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.009</td><td>0.01</td><td>0.001</td></tr>
+<tr><td>Stat.</td><td>norm Fro</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.01</td><td>0.011</td><td>0.0009</td></tr>
+<tr><td>Stat.</td><td>norm 1</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.023</td><td>0.036</td><td>0.0009</td></tr>
+<tr><td>Stat.</td><td>norm Inf</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.018</td><td>0.012</td><td>0.0092</td></tr>
+<tr><td>Stat.</td><td>norm Fro (C)</td><td><span class="badge badge-c">Complex</span></td><td>10</td><td>0.046</td><td>0.017</td><td>0.1252</td></tr>
+<tr><td>Stat.</td><td>norm Fro (C)</td><td><span class="badge badge-c">Complex</span></td><td>25</td><td>0.15</td><td>0.046</td><td>0.7781</td></tr>
+<tr><td>Stat.</td><td>sum col</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.461</td><td>0.835</td><td>0.0215</td></tr>
+<tr><td>Stat.</td><td>sum row</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.092</td><td>0.084</td><td>0.0212</td></tr>
+<tr><td>Stat.</td><td>mean</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.059</td><td>0.051</td><td>0.0501</td></tr>
+<tr><td>Stat.</td><td>max</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.118</td><td>0.116</td><td>0.0228</td></tr>
+<tr><td>Stat.</td><td>totalSum</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.082</td><td>0.064</td><td>0.0108</td></tr>
+<tr><td>Stat.</td><td>norm Fro</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.043</td><td>0.039</td><td>0.0009</td></tr>
+<tr><td>Stat.</td><td>norm 1</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.352</td><td>0.474</td><td>0.0009</td></tr>
+<tr><td>Stat.</td><td>norm Inf</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.039</td><td>0.046</td><td>0.0009</td></tr>
+<tr><td>Stat.</td><td>norm Fro (C)</td><td><span class="badge badge-c">Complex</span></td><td>50</td><td>0.834</td><td>0.554</td><td>2.5646</td></tr>
+<tr><td>Stat.</td><td>sum col</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.765</td><td>0.363</td><td>0.0403</td></tr>
+<tr><td>Stat.</td><td>sum row</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1</td><td>0.392</td><td>0.0403</td></tr>
+<tr><td>Stat.</td><td>mean</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.847</td><td>0.458</td><td>0.0978</td></tr>
+<tr><td>Stat.</td><td>max</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.26</td><td>0.501</td><td>0.0419</td></tr>
+<tr><td>Stat.</td><td>totalSum</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.376</td><td>0.233</td><td>0.001</td></tr>
+<tr><td>Stat.</td><td>norm Fro</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>2.124</td><td>0.475</td><td>0.0009</td></tr>
+<tr><td>Stat.</td><td>norm 1</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.112</td><td>0.063</td><td>0.0009</td></tr>
+<tr><td>Stat.</td><td>norm Inf</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.11</td><td>0.089</td><td>0.0009</td></tr>
+<tr><td>Stat.</td><td>norm Fro (C)</td><td><span class="badge badge-c">Complex</span></td><td>100</td><td>0.803</td><td>0.185</td><td>0.7562</td></tr>
+<tr><td>Stat.</td><td>sum col</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>2.265</td><td>1.112</td><td>0.0784</td></tr>
+<tr><td>Stat.</td><td>sum row</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>3.134</td><td>1.323</td><td>0.0784</td></tr>
+<tr><td>Stat.</td><td>mean</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>5.505</td><td>3.261</td><td>0.3652</td></tr>
+<tr><td>Stat.</td><td>max</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>3.025</td><td>0.363</td><td>0.08</td></tr>
+<tr><td>Stat.</td><td>totalSum</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>1.909</td><td>1.237</td><td>0.001</td></tr>
+<tr><td>Stat.</td><td>norm Fro</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>1.133</td><td>0.147</td><td>0.0009</td></tr>
+<tr><td>Stat.</td><td>norm 1</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>1.128</td><td>0.242</td><td>0.0009</td></tr>
+<tr><td>Stat.</td><td>norm Inf</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>1.364</td><td>0.128</td><td>0.0009</td></tr>
+<tr><td>Stat.</td><td>sum col</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>5.107</td><td>1.304</td><td>0.1242</td></tr>
+<tr><td>Stat.</td><td>sum row</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>4.42</td><td>1.792</td><td>0.1242</td></tr>
+<tr><td>Stat.</td><td>mean</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>5.322</td><td>0.794</td><td>0.2313</td></tr>
+<tr><td>Stat.</td><td>max</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>16.533</td><td>9.158</td><td>0.1563</td></tr>
+<tr><td>Stat.</td><td>totalSum</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>16.536</td><td>7.552</td><td>0.001</td></tr>
+<tr><td>Stat.</td><td>norm Fro</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>12.732</td><td>9.021</td><td>0.0009</td></tr>
+<tr><td>Stat.</td><td>norm 1</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>13.365</td><td>8.066</td><td>0.0009</td></tr>
+<tr><td>Stat.</td><td>norm Inf</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>9.662</td><td>1.74</td><td>0.0009</td></tr>
+<tr><td>Stat.</td><td>sum col</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>30.2</td><td>41.515</td><td>0.1852</td></tr>
+<tr><td>Stat.</td><td>sum row</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>30.592</td><td>21.157</td><td>0.1852</td></tr>
+<tr><td>Stat.</td><td>mean</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>72.509</td><td>90.36</td><td>0.3455</td></tr>
+<tr><td>Stat.</td><td>max</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>28.822</td><td>21.249</td><td>0.5635</td></tr>
+<tr><td>Stat.</td><td>totalSum</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>49.679</td><td>20.052</td><td>0.001</td></tr>
+<tr><td>Stat.</td><td>norm Fro</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>38.872</td><td>58.187</td><td>0.0009</td></tr>
+<tr><td>Stat.</td><td>norm 1</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>74.659</td><td>88.729</td><td>0.0009</td></tr>
+<tr><td>Stat.</td><td>norm Inf</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>36.019</td><td>35.23</td><td>0.0009</td></tr>
+<tr><td>Trasf.</td><td>ct (C)</td><td><span class="badge badge-c">Complex</span></td><td>5</td><td>0.018</td><td>0.019</td><td>0.0175</td></tr>
+<tr><td>Trasf.</td><td>ct (C)</td><td><span class="badge badge-c">Complex</span></td><td>10</td><td>0.05</td><td>0.022</td><td>0.0661</td></tr>
+<tr><td>Trasf.</td><td>ct (C)</td><td><span class="badge badge-c">Complex</span></td><td>25</td><td>0.09</td><td>0.056</td><td>0.2636</td></tr>
+<tr><td>Trasf.</td><td>ct (C)</td><td><span class="badge badge-c">Complex</span></td><td>50</td><td>0.134</td><td>0.039</td><td>1.0504</td></tr>
+<tr><td>Trasf.</td><td>ct (C)</td><td><span class="badge badge-c">Complex</span></td><td>100</td><td>0.339</td><td>0.056</td><td>4.2805</td></tr>
+<tr><td>Trasform.</td><td>transpose</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.039</td><td>0.028</td><td>0.0403</td></tr>
+<tr><td>Trasform.</td><td>ct</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.015</td><td>0.007</td><td>0.0051</td></tr>
+<tr><td>Trasform.</td><td>flip ud</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.05</td><td>0.052</td><td>0.0051</td></tr>
+<tr><td>Trasform.</td><td>flip lr</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.047</td><td>0.041</td><td>0.0051</td></tr>
+<tr><td>Trasform.</td><td>rot90</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.027</td><td>0.022</td><td>0.0051</td></tr>
+<tr><td>Trasform.</td><td>repmat 2x2</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.066</td><td>0.038</td><td>0.0165</td></tr>
+<tr><td>Trasform.</td><td>transpose</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>5.135</td><td>5.07</td><td>0.9559</td></tr>
+<tr><td>Trasform.</td><td>ct</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.368</td><td>0.187</td><td>0.0966</td></tr>
+<tr><td>Trasform.</td><td>flip ud</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.826</td><td>1.227</td><td>0.3498</td></tr>
+<tr><td>Trasform.</td><td>flip lr</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.15</td><td>0.039</td><td>0.0966</td></tr>
+<tr><td>Trasform.</td><td>rot90</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.259</td><td>0.143</td><td>0.0966</td></tr>
+<tr><td>Trasform.</td><td>repmat 2x2</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>1.102</td><td>0.587</td><td>0.3986</td></tr>
+<tr><td>Trasform.</td><td>transpose</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>3</td><td>1.161</td><td>3.0897</td></tr>
+<tr><td>Trasform.</td><td>ct</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.457</td><td>0.146</td><td>0.3987</td></tr>
+<tr><td>Trasform.</td><td>flip ud</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.06</td><td>0.005</td><td>0.3987</td></tr>
+<tr><td>Trasform.</td><td>flip lr</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.303</td><td>0.306</td><td>0.3987</td></tr>
+<tr><td>Trasform.</td><td>rot90</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.257</td><td>1.494</td><td>0.3981</td></tr>
+<tr><td>Trasform.</td><td>repmat 2x2</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>2.773</td><td>1.417</td><td>1.5492</td></tr>
+<tr><td>Trasform.</td><td>transpose</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>35.006</td><td>22.123</td><td>13.083</td></tr>
+<tr><td>Trasform.</td><td>ct</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>4.753</td><td>1.082</td><td>1.5271</td></tr>
+<tr><td>Trasform.</td><td>flip ud</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>0.704</td><td>0.698</td><td>1.5271</td></tr>
+<tr><td>Trasform.</td><td>flip lr</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>0.479</td><td>0.068</td><td>1.5271</td></tr>
+<tr><td>Trasform.</td><td>rot90</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>1.473</td><td>2.308</td><td>1.5495</td></tr>
+<tr><td>Trasform.</td><td>repmat 2x2</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>9.662</td><td>3.236</td><td>6.1048</td></tr>
+<tr><td>Trasform.</td><td>transpose</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>30.529</td><td>11.728</td><td>40.0732</td></tr>
+<tr><td>Trasform.</td><td>ct</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>7.134</td><td>2.026</td><td>6.1048</td></tr>
+<tr><td>Trasform.</td><td>flip ud</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>3.155</td><td>0.532</td><td>6.1048</td></tr>
+<tr><td>Trasform.</td><td>flip lr</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>3.752</td><td>0.818</td><td>6.1048</td></tr>
+<tr><td>Trasform.</td><td>rot90</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>4.993</td><td>2.199</td><td>6.1048</td></tr>
+<tr><td>Trasform.</td><td>repmat 2x2</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>20.929</td><td>6.64</td><td>9.7662</td></tr>
+<tr><td>Trasform.</td><td>transpose</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>396.058</td><td>68.964</td><td>109.873</td></tr>
+<tr><td>Trasform.</td><td>ct</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>131.046</td><td>185.849</td><td>13.7342</td></tr>
+<tr><td>Trasform.</td><td>flip ud</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>40.694</td><td>41.723</td><td>13.7342</td></tr>
+<tr><td>Trasform.</td><td>flip lr</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>51.448</td><td>48.186</td><td>13.7342</td></tr>
+<tr><td>Trasform.</td><td>rot90</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>21.719</td><td>13.197</td><td>13.7342</td></tr>
+<tr><td>Trasform.</td><td>repmat 2x2</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>143.463</td><td>84.668</td><td>10.9866</td></tr>
+<tr><td>Unarie</td><td>abs</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.085</td><td>0.123</td><td>0.0406</td></tr>
+<tr><td>Unarie</td><td>sqrt</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.044</td><td>0.049</td><td>0.0406</td></tr>
+<tr><td>Unarie</td><td>round</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.053</td><td>0.067</td><td>0.0406</td></tr>
+<tr><td>Unarie</td><td>negate</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.028</td><td>0.023</td><td>0.0408</td></tr>
+<tr><td>Unarie</td><td>exp</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.061</td><td>0.029</td><td>0.12</td></tr>
+<tr><td>Unarie</td><td>sin</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.287</td><td>0.429</td><td>0.0406</td></tr>
+<tr><td>Unarie</td><td>cos</td><td><span class="badge badge-f">Float64M</span></td><td>10</td><td>0.267</td><td>0.477</td><td>0.0406</td></tr>
+<tr><td>Unarie</td><td>abs</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.401</td><td>0.135</td><td>0.9561</td></tr>
+<tr><td>Unarie</td><td>sqrt</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.907</td><td>1.189</td><td>0.9561</td></tr>
+<tr><td>Unarie</td><td>round</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.559</td><td>0.133</td><td>0.9561</td></tr>
+<tr><td>Unarie</td><td>negate</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.187</td><td>0.058</td><td>0.7657</td></tr>
+<tr><td>Unarie</td><td>exp</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>3.91</td><td>3.964</td><td>0.4684</td></tr>
+<tr><td>Unarie</td><td>sin</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.209</td><td>0.082</td><td>0.7654</td></tr>
+<tr><td>Unarie</td><td>cos</td><td><span class="badge badge-f">Float64M</span></td><td>50</td><td>0.368</td><td>0.364</td><td>0.7654</td></tr>
+<tr><td>Unarie</td><td>abs</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.054</td><td>0.777</td><td>3.2157</td></tr>
+<tr><td>Unarie</td><td>sqrt</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>3.605</td><td>1.412</td><td>3.8176</td></tr>
+<tr><td>Unarie</td><td>round</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>2.001</td><td>1.031</td><td>3.7165</td></tr>
+<tr><td>Unarie</td><td>negate</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>0.756</td><td>0.113</td><td>3.0868</td></tr>
+<tr><td>Unarie</td><td>exp</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>7.203</td><td>3.027</td><td>1.9586</td></tr>
+<tr><td>Unarie</td><td>sin</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>1.949</td><td>0.506</td><td>3.0685</td></tr>
+<tr><td>Unarie</td><td>cos</td><td><span class="badge badge-f">Float64M</span></td><td>100</td><td>2.155</td><td>0.338</td><td>3.0685</td></tr>
+<tr><td>Unarie</td><td>abs</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>7.398</td><td>1.892</td><td>13.5956</td></tr>
+<tr><td>Unarie</td><td>sqrt</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>7.718</td><td>0.755</td><td>12.2098</td></tr>
+<tr><td>Unarie</td><td>round</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>9.954</td><td>6.186</td><td>12.2098</td></tr>
+<tr><td>Unarie</td><td>negate</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>8.655</td><td>2.835</td><td>12.21</td></tr>
+<tr><td>Unarie</td><td>exp</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>21.097</td><td>7.007</td><td>12.7266</td></tr>
+<tr><td>Unarie</td><td>sin</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>3.118</td><td>0.695</td><td>12.2098</td></tr>
+<tr><td>Unarie</td><td>cos</td><td><span class="badge badge-f">Float64M</span></td><td>200</td><td>8.369</td><td>1.473</td><td>12.2098</td></tr>
+<tr><td>Unarie</td><td>abs</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>59.882</td><td>9.673</td><td>40.0359</td></tr>
+<tr><td>Unarie</td><td>sqrt</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>67.941</td><td>23.615</td><td>40.055</td></tr>
+<tr><td>Unarie</td><td>round</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>76.585</td><td>38.476</td><td>40.0638</td></tr>
+<tr><td>Unarie</td><td>negate</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>82.243</td><td>51.304</td><td>40.0041</td></tr>
+<tr><td>Unarie</td><td>exp</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>285.703</td><td>114.677</td><td>58.5957</td></tr>
+<tr><td>Unarie</td><td>sin</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>83.706</td><td>61.333</td><td>40.0575</td></tr>
+<tr><td>Unarie</td><td>cos</td><td><span class="badge badge-f">Float64M</span></td><td>400</td><td>70.591</td><td>27.466</td><td>40.0187</td></tr>
+<tr><td>Unarie</td><td>abs</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>1208.823</td><td>627.495</td><td>109.8733</td></tr>
+<tr><td>Unarie</td><td>sqrt</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>839.733</td><td>363.473</td><td>109.8733</td></tr>
+<tr><td>Unarie</td><td>round</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>661.165</td><td>349.884</td><td>109.8733</td></tr>
+<tr><td>Unarie</td><td>negate</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>301.332</td><td>129.529</td><td>109.8736</td></tr>
+<tr><td>Unarie</td><td>exp</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>1222.109</td><td>169.478</td><td>197.7569</td></tr>
+<tr><td>Unarie</td><td>sin</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>302.864</td><td>199.613</td><td>109.8732</td></tr>
+<tr><td>Unarie</td><td>cos</td><td><span class="badge badge-f">Float64M</span></td><td>600</td><td>605.879</td><td>378.434</td><td>109.8733</td></tr></tbody></table>
+</section>
+
+</main>
+<script>
+const R=[{"category":"Aritmetica","operation":"add","size":10,"type":"Float64M","avgMs":0.133,"minMs":0.065,"maxMs":0.194,"stdMs":0.053,"memDeltaMB":0.0572},{"category":"Aritmetica","operation":"sub","size":10,"type":"Float64M","avgMs":0.145,"minMs":0.055,"maxMs":0.402,"stdMs":0.133,"memDeltaMB":0.1376},{"category":"Aritmetica","operation":"mul","size":10,"type":"Float64M","avgMs":0.066,"minMs":0.035,"maxMs":0.149,"stdMs":0.042,"memDeltaMB":0.0441},{"category":"Aritmetica","operation":"mul scalar","size":10,"type":"Float64M","avgMs":0.044,"minMs":0.022,"maxMs":0.103,"stdMs":0.03,"memDeltaMB":0.0478},{"category":"Aritmetica","operation":"pow(2)","size":10,"type":"Float64M","avgMs":1.543,"minMs":0.188,"maxMs":5.679,"stdMs":2.08,"memDeltaMB":0.1977},{"category":"DotOps","operation":"dotMul","size":10,"type":"Float64M","avgMs":2.44,"minMs":0.021,"maxMs":4.433,"stdMs":1.977,"memDeltaMB":0.0448},{"category":"DotOps","operation":"dotDiv","size":10,"type":"Float64M","avgMs":0.062,"minMs":0.019,"maxMs":0.214,"stdMs":0.076,"memDeltaMB":0.0414},{"category":"DotOps","operation":"dotPow(2)","size":10,"type":"Float64M","avgMs":0.069,"minMs":0.021,"maxMs":0.239,"stdMs":0.085,"memDeltaMB":0.0405},{"category":"Unarie","operation":"abs","size":10,"type":"Float64M","avgMs":0.085,"minMs":0.017,"maxMs":0.331,"stdMs":0.123,"memDeltaMB":0.0406},{"category":"Unarie","operation":"sqrt","size":10,"type":"Float64M","avgMs":0.044,"minMs":0.018,"maxMs":0.141,"stdMs":0.049,"memDeltaMB":0.0406},{"category":"Unarie","operation":"round","size":10,"type":"Float64M","avgMs":0.053,"minMs":0.018,"maxMs":0.188,"stdMs":0.067,"memDeltaMB":0.0406},{"category":"Unarie","operation":"negate","size":10,"type":"Float64M","avgMs":0.028,"minMs":0.016,"maxMs":0.074,"stdMs":0.023,"memDeltaMB":0.0408},{"category":"Unarie","operation":"exp","size":10,"type":"Float64M","avgMs":0.061,"minMs":0.041,"maxMs":0.118,"stdMs":0.029,"memDeltaMB":0.12},{"category":"Unarie","operation":"sin","size":10,"type":"Float64M","avgMs":0.287,"minMs":0.023,"maxMs":1.132,"stdMs":0.429,"memDeltaMB":0.0406},{"category":"Unarie","operation":"cos","size":10,"type":"Float64M","avgMs":0.267,"minMs":0.014,"maxMs":1.221,"stdMs":0.477,"memDeltaMB":0.0406},{"category":"Trasform.","operation":"transpose","size":10,"type":"Float64M","avgMs":0.039,"minMs":0.022,"maxMs":0.095,"stdMs":0.028,"memDeltaMB":0.0403},{"category":"Trasform.","operation":"ct","size":10,"type":"Float64M","avgMs":0.015,"minMs":0.011,"maxMs":0.029,"stdMs":0.007,"memDeltaMB":0.0051},{"category":"Trasform.","operation":"flip ud","size":10,"type":"Float64M","avgMs":0.05,"minMs":0.012,"maxMs":0.144,"stdMs":0.052,"memDeltaMB":0.0051},{"category":"Trasform.","operation":"flip lr","size":10,"type":"Float64M","avgMs":0.047,"minMs":0.021,"maxMs":0.127,"stdMs":0.041,"memDeltaMB":0.0051},{"category":"Trasform.","operation":"rot90","size":10,"type":"Float64M","avgMs":0.027,"minMs":0.015,"maxMs":0.072,"stdMs":0.022,"memDeltaMB":0.0051},{"category":"Trasform.","operation":"repmat 2x2","size":10,"type":"Float64M","avgMs":0.066,"minMs":0.036,"maxMs":0.138,"stdMs":0.038,"memDeltaMB":0.0165},{"category":"Stat.","operation":"sum col","size":10,"type":"Float64M","avgMs":0.033,"minMs":0.008,"maxMs":0.11,"stdMs":0.039,"memDeltaMB":0.0099},{"category":"Stat.","operation":"sum row","size":10,"type":"Float64M","avgMs":0.021,"minMs":0.007,"maxMs":0.072,"stdMs":0.025,"memDeltaMB":0.006},{"category":"Stat.","operation":"mean","size":10,"type":"Float64M","avgMs":0.117,"minMs":0.021,"maxMs":0.458,"stdMs":0.171,"memDeltaMB":0.0265},{"category":"Stat.","operation":"max","size":10,"type":"Float64M","avgMs":0.137,"minMs":0.011,"maxMs":0.37,"stdMs":0.14,"memDeltaMB":0.0623},{"category":"Stat.","operation":"totalSum","size":10,"type":"Float64M","avgMs":0.009,"minMs":0.003,"maxMs":0.03,"stdMs":0.01,"memDeltaMB":0.001},{"category":"Stat.","operation":"norm Fro","size":10,"type":"Float64M","avgMs":0.01,"minMs":0.004,"maxMs":0.032,"stdMs":0.011,"memDeltaMB":0.0009},{"category":"Stat.","operation":"norm 1","size":10,"type":"Float64M","avgMs":0.023,"minMs":0.003,"maxMs":0.095,"stdMs":0.036,"memDeltaMB":0.0009},{"category":"Stat.","operation":"norm Inf","size":10,"type":"Float64M","avgMs":0.018,"minMs":0.004,"maxMs":0.033,"stdMs":0.012,"memDeltaMB":0.0092},{"category":"Algebra","operation":"trace","size":10,"type":"Float64M","avgMs":0.011,"minMs":0.004,"maxMs":0.035,"stdMs":0.012,"memDeltaMB":0.0014},{"category":"Aritmetica","operation":"add","size":50,"type":"Float64M","avgMs":0.43,"minMs":0.393,"maxMs":0.535,"stdMs":0.053,"memDeltaMB":0.9559},{"category":"Aritmetica","operation":"sub","size":50,"type":"Float64M","avgMs":0.513,"minMs":0.368,"maxMs":0.582,"stdMs":0.076,"memDeltaMB":0.9559},{"category":"Aritmetica","operation":"mul","size":50,"type":"Float64M","avgMs":5.148,"minMs":1.013,"maxMs":17.224,"stdMs":6.118,"memDeltaMB":0.9559},{"category":"Aritmetica","operation":"mul scalar","size":50,"type":"Float64M","avgMs":2.442,"minMs":0.499,"maxMs":9.063,"stdMs":3.325,"memDeltaMB":1.0152},{"category":"Aritmetica","operation":"pow(2)","size":50,"type":"Float64M","avgMs":1.804,"minMs":1.352,"maxMs":2.632,"stdMs":0.485,"memDeltaMB":1.2117},{"category":"DotOps","operation":"dotMul","size":50,"type":"Float64M","avgMs":4.782,"minMs":0.335,"maxMs":16.625,"stdMs":6.231,"memDeltaMB":1.0782},{"category":"DotOps","operation":"dotDiv","size":50,"type":"Float64M","avgMs":0.474,"minMs":0.331,"maxMs":0.75,"stdMs":0.159,"memDeltaMB":0.9593},{"category":"DotOps","operation":"dotPow(2)","size":50,"type":"Float64M","avgMs":2.275,"minMs":0.35,"maxMs":6.269,"stdMs":2.277,"memDeltaMB":0.9561},{"category":"Unarie","operation":"abs","size":50,"type":"Float64M","avgMs":0.401,"minMs":0.328,"maxMs":0.671,"stdMs":0.135,"memDeltaMB":0.9561},{"category":"Unarie","operation":"sqrt","size":50,"type":"Float64M","avgMs":0.907,"minMs":0.255,"maxMs":3.282,"stdMs":1.189,"memDeltaMB":0.9561},{"category":"Unarie","operation":"round","size":50,"type":"Float64M","avgMs":0.559,"minMs":0.412,"maxMs":0.796,"stdMs":0.133,"memDeltaMB":0.9561},{"category":"Unarie","operation":"negate","size":50,"type":"Float64M","avgMs":0.187,"minMs":0.121,"maxMs":0.287,"stdMs":0.058,"memDeltaMB":0.7657},{"category":"Unarie","operation":"exp","size":50,"type":"Float64M","avgMs":3.91,"minMs":1.067,"maxMs":11.711,"stdMs":3.964,"memDeltaMB":0.4684},{"category":"Unarie","operation":"sin","size":50,"type":"Float64M","avgMs":0.209,"minMs":0.155,"maxMs":0.372,"stdMs":0.082,"memDeltaMB":0.7654},{"category":"Unarie","operation":"cos","size":50,"type":"Float64M","avgMs":0.368,"minMs":0.154,"maxMs":1.096,"stdMs":0.364,"memDeltaMB":0.7654},{"category":"Trasform.","operation":"transpose","size":50,"type":"Float64M","avgMs":5.135,"minMs":1.326,"maxMs":15.036,"stdMs":5.07,"memDeltaMB":0.9559},{"category":"Trasform.","operation":"ct","size":50,"type":"Float64M","avgMs":0.368,"minMs":0.233,"maxMs":0.718,"stdMs":0.187,"memDeltaMB":0.0966},{"category":"Trasform.","operation":"flip ud","size":50,"type":"Float64M","avgMs":0.826,"minMs":0.113,"maxMs":3.267,"stdMs":1.227,"memDeltaMB":0.3498},{"category":"Trasform.","operation":"flip lr","size":50,"type":"Float64M","avgMs":0.15,"minMs":0.127,"maxMs":0.229,"stdMs":0.039,"memDeltaMB":0.0966},{"category":"Trasform.","operation":"rot90","size":50,"type":"Float64M","avgMs":0.259,"minMs":0.172,"maxMs":0.544,"stdMs":0.143,"memDeltaMB":0.0966},{"category":"Trasform.","operation":"repmat 2x2","size":50,"type":"Float64M","avgMs":1.102,"minMs":0.482,"maxMs":2.12,"stdMs":0.587,"memDeltaMB":0.3986},{"category":"Stat.","operation":"sum col","size":50,"type":"Float64M","avgMs":0.461,"minMs":0.024,"maxMs":2.131,"stdMs":0.835,"memDeltaMB":0.0215},{"category":"Stat.","operation":"sum row","size":50,"type":"Float64M","avgMs":0.092,"minMs":0.035,"maxMs":0.258,"stdMs":0.084,"memDeltaMB":0.0212},{"category":"Stat.","operation":"mean","size":50,"type":"Float64M","avgMs":0.059,"minMs":0.031,"maxMs":0.16,"stdMs":0.051,"memDeltaMB":0.0501},{"category":"Stat.","operation":"max","size":50,"type":"Float64M","avgMs":0.118,"minMs":0.043,"maxMs":0.349,"stdMs":0.116,"memDeltaMB":0.0228},{"category":"Stat.","operation":"totalSum","size":50,"type":"Float64M","avgMs":0.082,"minMs":0.019,"maxMs":0.194,"stdMs":0.064,"memDeltaMB":0.0108},{"category":"Stat.","operation":"norm Fro","size":50,"type":"Float64M","avgMs":0.043,"minMs":0.02,"maxMs":0.121,"stdMs":0.039,"memDeltaMB":0.0009},{"category":"Stat.","operation":"norm 1","size":50,"type":"Float64M","avgMs":0.352,"minMs":0.027,"maxMs":1.284,"stdMs":0.474,"memDeltaMB":0.0009},{"category":"Stat.","operation":"norm Inf","size":50,"type":"Float64M","avgMs":0.039,"minMs":0.014,"maxMs":0.13,"stdMs":0.046,"memDeltaMB":0.0009},{"category":"Algebra","operation":"trace","size":50,"type":"Float64M","avgMs":0.088,"minMs":0.012,"maxMs":0.281,"stdMs":0.1,"memDeltaMB":0.2003},{"category":"Aritmetica","operation":"add","size":100,"type":"Float64M","avgMs":4.753,"minMs":2.148,"maxMs":14,"stdMs":4.634,"memDeltaMB":3.2555},{"category":"Aritmetica","operation":"sub","size":100,"type":"Float64M","avgMs":3.062,"minMs":1.716,"maxMs":3.917,"stdMs":0.95,"memDeltaMB":3.8173},{"category":"Aritmetica","operation":"mul","size":100,"type":"Float64M","avgMs":2.465,"minMs":2.057,"maxMs":3.28,"stdMs":0.47,"memDeltaMB":3.2081},{"category":"Aritmetica","operation":"mul scalar","size":100,"type":"Float64M","avgMs":1.733,"minMs":0.873,"maxMs":3.626,"stdMs":1.086,"memDeltaMB":3.6064},{"category":"Aritmetica","operation":"pow(2)","size":100,"type":"Float64M","avgMs":7.713,"minMs":4.955,"maxMs":13.211,"stdMs":2.894,"memDeltaMB":4.1705},{"category":"DotOps","operation":"dotMul","size":100,"type":"Float64M","avgMs":2.007,"minMs":1.897,"maxMs":2.21,"stdMs":0.117,"memDeltaMB":3.8183},{"category":"DotOps","operation":"dotDiv","size":100,"type":"Float64M","avgMs":1.393,"minMs":0.962,"maxMs":2.846,"stdMs":0.728,"memDeltaMB":3.254},{"category":"DotOps","operation":"dotPow(2)","size":100,"type":"Float64M","avgMs":2.114,"minMs":1.836,"maxMs":2.433,"stdMs":0.201,"memDeltaMB":3.8369},{"category":"Unarie","operation":"abs","size":100,"type":"Float64M","avgMs":1.054,"minMs":0.597,"maxMs":2.606,"stdMs":0.777,"memDeltaMB":3.2157},{"category":"Unarie","operation":"sqrt","size":100,"type":"Float64M","avgMs":3.605,"minMs":2.043,"maxMs":5.678,"stdMs":1.412,"memDeltaMB":3.8176},{"category":"Unarie","operation":"round","size":100,"type":"Float64M","avgMs":2.001,"minMs":1.154,"maxMs":3.998,"stdMs":1.031,"memDeltaMB":3.7165},{"category":"Unarie","operation":"negate","size":100,"type":"Float64M","avgMs":0.756,"minMs":0.567,"maxMs":0.877,"stdMs":0.113,"memDeltaMB":3.0868},{"category":"Unarie","operation":"exp","size":100,"type":"Float64M","avgMs":7.203,"minMs":3.614,"maxMs":12.302,"stdMs":3.027,"memDeltaMB":1.9586},{"category":"Unarie","operation":"sin","size":100,"type":"Float64M","avgMs":1.949,"minMs":1.341,"maxMs":2.697,"stdMs":0.506,"memDeltaMB":3.0685},{"category":"Unarie","operation":"cos","size":100,"type":"Float64M","avgMs":2.155,"minMs":1.874,"maxMs":2.807,"stdMs":0.338,"memDeltaMB":3.0685},{"category":"Trasform.","operation":"transpose","size":100,"type":"Float64M","avgMs":3,"minMs":1.813,"maxMs":5.165,"stdMs":1.161,"memDeltaMB":3.0897},{"category":"Trasform.","operation":"ct","size":100,"type":"Float64M","avgMs":0.457,"minMs":0.269,"maxMs":0.64,"stdMs":0.146,"memDeltaMB":0.3987},{"category":"Trasform.","operation":"flip ud","size":100,"type":"Float64M","avgMs":0.06,"minMs":0.055,"maxMs":0.068,"stdMs":0.005,"memDeltaMB":0.3987},{"category":"Trasform.","operation":"flip lr","size":100,"type":"Float64M","avgMs":0.303,"minMs":0.077,"maxMs":0.87,"stdMs":0.306,"memDeltaMB":0.3987},{"category":"Trasform.","operation":"rot90","size":100,"type":"Float64M","avgMs":1.257,"minMs":0.09,"maxMs":3.832,"stdMs":1.494,"memDeltaMB":0.3981},{"category":"Trasform.","operation":"repmat 2x2","size":100,"type":"Float64M","avgMs":2.773,"minMs":1.099,"maxMs":5.142,"stdMs":1.417,"memDeltaMB":1.5492},{"category":"Stat.","operation":"sum col","size":100,"type":"Float64M","avgMs":0.765,"minMs":0.296,"maxMs":1.364,"stdMs":0.363,"memDeltaMB":0.0403},{"category":"Stat.","operation":"sum row","size":100,"type":"Float64M","avgMs":1,"minMs":0.545,"maxMs":1.65,"stdMs":0.392,"memDeltaMB":0.0403},{"category":"Stat.","operation":"mean","size":100,"type":"Float64M","avgMs":1.847,"minMs":1.171,"maxMs":2.531,"stdMs":0.458,"memDeltaMB":0.0978},{"category":"Stat.","operation":"max","size":100,"type":"Float64M","avgMs":1.26,"minMs":0.589,"maxMs":2.007,"stdMs":0.501,"memDeltaMB":0.0419},{"category":"Stat.","operation":"totalSum","size":100,"type":"Float64M","avgMs":0.376,"minMs":0.096,"maxMs":0.743,"stdMs":0.233,"memDeltaMB":0.001},{"category":"Stat.","operation":"norm Fro","size":100,"type":"Float64M","avgMs":2.124,"minMs":1.54,"maxMs":2.612,"stdMs":0.475,"memDeltaMB":0.0009},{"category":"Stat.","operation":"norm 1","size":100,"type":"Float64M","avgMs":0.112,"minMs":0.075,"maxMs":0.237,"stdMs":0.063,"memDeltaMB":0.0009},{"category":"Stat.","operation":"norm Inf","size":100,"type":"Float64M","avgMs":0.11,"minMs":0.063,"maxMs":0.289,"stdMs":0.089,"memDeltaMB":0.0009},{"category":"Algebra","operation":"trace","size":100,"type":"Float64M","avgMs":0.107,"minMs":0.054,"maxMs":0.295,"stdMs":0.094,"memDeltaMB":0.0014},{"category":"Aritmetica","operation":"add","size":200,"type":"Float64M","avgMs":70.085,"minMs":6.83,"maxMs":285.454,"stdMs":107.945,"memDeltaMB":12.2095},{"category":"Aritmetica","operation":"sub","size":200,"type":"Float64M","avgMs":22.015,"minMs":13.087,"maxMs":45.2,"stdMs":11.716,"memDeltaMB":14.4059},{"category":"Aritmetica","operation":"mul","size":200,"type":"Float64M","avgMs":27.351,"minMs":14.843,"maxMs":49.552,"stdMs":12.579,"memDeltaMB":13.0756},{"category":"Aritmetica","operation":"mul scalar","size":200,"type":"Float64M","avgMs":46.118,"minMs":7.752,"maxMs":185.109,"stdMs":69.529,"memDeltaMB":14.232},{"category":"Aritmetica","operation":"pow(2)","size":200,"type":"Float64M","avgMs":64.388,"minMs":35.889,"maxMs":89.615,"stdMs":18.763,"memDeltaMB":13.2942},{"category":"DotOps","operation":"dotMul","size":200,"type":"Float64M","avgMs":5.91,"minMs":4.851,"maxMs":8.832,"stdMs":1.505,"memDeltaMB":13.0826},{"category":"DotOps","operation":"dotDiv","size":200,"type":"Float64M","avgMs":4.74,"minMs":3.937,"maxMs":5.257,"stdMs":0.441,"memDeltaMB":12.2106},{"category":"DotOps","operation":"dotPow(2)","size":200,"type":"Float64M","avgMs":9.481,"minMs":5.427,"maxMs":13.972,"stdMs":3.582,"memDeltaMB":14.3867},{"category":"Unarie","operation":"abs","size":200,"type":"Float64M","avgMs":7.398,"minMs":5.371,"maxMs":10.713,"stdMs":1.892,"memDeltaMB":13.5956},{"category":"Unarie","operation":"sqrt","size":200,"type":"Float64M","avgMs":7.718,"minMs":7.251,"maxMs":9.222,"stdMs":0.755,"memDeltaMB":12.2098},{"category":"Unarie","operation":"round","size":200,"type":"Float64M","avgMs":9.954,"minMs":6.168,"maxMs":22.281,"stdMs":6.186,"memDeltaMB":12.2098},{"category":"Unarie","operation":"negate","size":200,"type":"Float64M","avgMs":8.655,"minMs":6.149,"maxMs":12.773,"stdMs":2.835,"memDeltaMB":12.21},{"category":"Unarie","operation":"exp","size":200,"type":"Float64M","avgMs":21.097,"minMs":14.981,"maxMs":32.908,"stdMs":7.007,"memDeltaMB":12.7266},{"category":"Unarie","operation":"sin","size":200,"type":"Float64M","avgMs":3.118,"minMs":2.09,"maxMs":4.039,"stdMs":0.695,"memDeltaMB":12.2098},{"category":"Unarie","operation":"cos","size":200,"type":"Float64M","avgMs":8.369,"minMs":6.433,"maxMs":10.886,"stdMs":1.473,"memDeltaMB":12.2098},{"category":"Trasform.","operation":"transpose","size":200,"type":"Float64M","avgMs":35.006,"minMs":11.34,"maxMs":68.504,"stdMs":22.123,"memDeltaMB":13.083},{"category":"Trasform.","operation":"ct","size":200,"type":"Float64M","avgMs":4.753,"minMs":3.483,"maxMs":6.043,"stdMs":1.082,"memDeltaMB":1.5271},{"category":"Trasform.","operation":"flip ud","size":200,"type":"Float64M","avgMs":0.704,"minMs":0.283,"maxMs":2.09,"stdMs":0.698,"memDeltaMB":1.5271},{"category":"Trasform.","operation":"flip lr","size":200,"type":"Float64M","avgMs":0.479,"minMs":0.417,"maxMs":0.607,"stdMs":0.068,"memDeltaMB":1.5271},{"category":"Trasform.","operation":"rot90","size":200,"type":"Float64M","avgMs":1.473,"minMs":0.293,"maxMs":6.088,"stdMs":2.308,"memDeltaMB":1.5495},{"category":"Trasform.","operation":"repmat 2x2","size":200,"type":"Float64M","avgMs":9.662,"minMs":6.205,"maxMs":15.151,"stdMs":3.236,"memDeltaMB":6.1048},{"category":"Stat.","operation":"sum col","size":200,"type":"Float64M","avgMs":2.265,"minMs":1.191,"maxMs":4.258,"stdMs":1.112,"memDeltaMB":0.0784},{"category":"Stat.","operation":"sum row","size":200,"type":"Float64M","avgMs":3.134,"minMs":2.062,"maxMs":5.675,"stdMs":1.323,"memDeltaMB":0.0784},{"category":"Stat.","operation":"mean","size":200,"type":"Float64M","avgMs":5.505,"minMs":3.013,"maxMs":11.934,"stdMs":3.261,"memDeltaMB":0.3652},{"category":"Stat.","operation":"max","size":200,"type":"Float64M","avgMs":3.025,"minMs":2.343,"maxMs":3.415,"stdMs":0.363,"memDeltaMB":0.08},{"category":"Stat.","operation":"totalSum","size":200,"type":"Float64M","avgMs":1.909,"minMs":1.156,"maxMs":4.38,"stdMs":1.237,"memDeltaMB":0.001},{"category":"Stat.","operation":"norm Fro","size":200,"type":"Float64M","avgMs":1.133,"minMs":1.005,"maxMs":1.371,"stdMs":0.147,"memDeltaMB":0.0009},{"category":"Stat.","operation":"norm 1","size":200,"type":"Float64M","avgMs":1.128,"minMs":0.777,"maxMs":1.498,"stdMs":0.242,"memDeltaMB":0.0009},{"category":"Stat.","operation":"norm Inf","size":200,"type":"Float64M","avgMs":1.364,"minMs":1.183,"maxMs":1.508,"stdMs":0.128,"memDeltaMB":0.0009},{"category":"Algebra","operation":"trace","size":200,"type":"Float64M","avgMs":0.805,"minMs":0.665,"maxMs":1.05,"stdMs":0.131,"memDeltaMB":0.0014},{"category":"Aritmetica","operation":"add","size":400,"type":"Float64M","avgMs":79.991,"minMs":35.419,"maxMs":147.344,"stdMs":42.835,"memDeltaMB":40.2217},{"category":"Aritmetica","operation":"sub","size":400,"type":"Float64M","avgMs":81.361,"minMs":53.071,"maxMs":131.084,"stdMs":26.629,"memDeltaMB":40.0782},{"category":"Aritmetica","operation":"mul","size":400,"type":"Float64M","avgMs":187.835,"minMs":97.632,"maxMs":253.006,"stdMs":60.798,"memDeltaMB":40.0842},{"category":"Aritmetica","operation":"mul scalar","size":400,"type":"Float64M","avgMs":86.716,"minMs":23.06,"maxMs":115.96,"stdMs":33.414,"memDeltaMB":40.0536},{"category":"Aritmetica","operation":"pow(2)","size":400,"type":"Float64M","avgMs":851.724,"minMs":676.912,"maxMs":1104.992,"stdMs":164.096,"memDeltaMB":53.4099},{"category":"DotOps","operation":"dotMul","size":400,"type":"Float64M","avgMs":36.096,"minMs":28.369,"maxMs":46.391,"stdMs":6.456,"memDeltaMB":40.054},{"category":"DotOps","operation":"dotDiv","size":400,"type":"Float64M","avgMs":32.39,"minMs":20.969,"maxMs":42.077,"stdMs":7.742,"memDeltaMB":40.0384},{"category":"DotOps","operation":"dotPow(2)","size":400,"type":"Float64M","avgMs":33.672,"minMs":19.789,"maxMs":40.622,"stdMs":7.293,"memDeltaMB":40.0936},{"category":"Unarie","operation":"abs","size":400,"type":"Float64M","avgMs":59.882,"minMs":41.809,"maxMs":69.712,"stdMs":9.673,"memDeltaMB":40.0359},{"category":"Unarie","operation":"sqrt","size":400,"type":"Float64M","avgMs":67.941,"minMs":25.83,"maxMs":93.407,"stdMs":23.615,"memDeltaMB":40.055},{"category":"Unarie","operation":"round","size":400,"type":"Float64M","avgMs":76.585,"minMs":16.388,"maxMs":135.995,"stdMs":38.476,"memDeltaMB":40.0638},{"category":"Unarie","operation":"negate","size":400,"type":"Float64M","avgMs":82.243,"minMs":13.439,"maxMs":154.39,"stdMs":51.304,"memDeltaMB":40.0041},{"category":"Unarie","operation":"exp","size":400,"type":"Float64M","avgMs":285.703,"minMs":144.449,"maxMs":412.927,"stdMs":114.677,"memDeltaMB":58.5957},{"category":"Unarie","operation":"sin","size":400,"type":"Float64M","avgMs":83.706,"minMs":19.529,"maxMs":182.217,"stdMs":61.333,"memDeltaMB":40.0575},{"category":"Unarie","operation":"cos","size":400,"type":"Float64M","avgMs":70.591,"minMs":25.514,"maxMs":102.054,"stdMs":27.466,"memDeltaMB":40.0187},{"category":"Trasform.","operation":"transpose","size":400,"type":"Float64M","avgMs":30.529,"minMs":7.959,"maxMs":41.38,"stdMs":11.728,"memDeltaMB":40.0732},{"category":"Trasform.","operation":"ct","size":400,"type":"Float64M","avgMs":7.134,"minMs":4.339,"maxMs":9.943,"stdMs":2.026,"memDeltaMB":6.1048},{"category":"Trasform.","operation":"flip ud","size":400,"type":"Float64M","avgMs":3.155,"minMs":2.528,"maxMs":4.034,"stdMs":0.532,"memDeltaMB":6.1048},{"category":"Trasform.","operation":"flip lr","size":400,"type":"Float64M","avgMs":3.752,"minMs":2.388,"maxMs":4.608,"stdMs":0.818,"memDeltaMB":6.1048},{"category":"Trasform.","operation":"rot90","size":400,"type":"Float64M","avgMs":4.993,"minMs":3.09,"maxMs":9.138,"stdMs":2.199,"memDeltaMB":6.1048},{"category":"Trasform.","operation":"repmat 2x2","size":400,"type":"Float64M","avgMs":20.929,"minMs":15.278,"maxMs":33.944,"stdMs":6.64,"memDeltaMB":9.7662},{"category":"Stat.","operation":"sum col","size":400,"type":"Float64M","avgMs":5.107,"minMs":2.936,"maxMs":6.678,"stdMs":1.304,"memDeltaMB":0.1242},{"category":"Stat.","operation":"sum row","size":400,"type":"Float64M","avgMs":4.42,"minMs":2.648,"maxMs":7.555,"stdMs":1.792,"memDeltaMB":0.1242},{"category":"Stat.","operation":"mean","size":400,"type":"Float64M","avgMs":5.322,"minMs":4.067,"maxMs":5.99,"stdMs":0.794,"memDeltaMB":0.2313},{"category":"Stat.","operation":"max","size":400,"type":"Float64M","avgMs":16.533,"minMs":9.33,"maxMs":33.883,"stdMs":9.158,"memDeltaMB":0.1563},{"category":"Stat.","operation":"totalSum","size":400,"type":"Float64M","avgMs":16.536,"minMs":8.681,"maxMs":29.545,"stdMs":7.552,"memDeltaMB":0.001},{"category":"Stat.","operation":"norm Fro","size":400,"type":"Float64M","avgMs":12.732,"minMs":6.373,"maxMs":30.586,"stdMs":9.021,"memDeltaMB":0.0009},{"category":"Stat.","operation":"norm 1","size":400,"type":"Float64M","avgMs":13.365,"minMs":6.878,"maxMs":29.187,"stdMs":8.066,"memDeltaMB":0.0009},{"category":"Stat.","operation":"norm Inf","size":400,"type":"Float64M","avgMs":9.662,"minMs":7.843,"maxMs":12.836,"stdMs":1.74,"memDeltaMB":0.0009},{"category":"Algebra","operation":"trace","size":400,"type":"Float64M","avgMs":3.398,"minMs":2.645,"maxMs":4.701,"stdMs":0.761,"memDeltaMB":0.0014},{"category":"Aritmetica","operation":"add","size":600,"type":"Float64M","avgMs":604.53,"minMs":164.661,"maxMs":933.203,"stdMs":333.013,"memDeltaMB":109.873},{"category":"Aritmetica","operation":"sub","size":600,"type":"Float64M","avgMs":273.938,"minMs":171.849,"maxMs":488.665,"stdMs":118.168,"memDeltaMB":109.873},{"category":"Aritmetica","operation":"mul","size":600,"type":"Float64M","avgMs":580.088,"minMs":364.074,"maxMs":803.07,"stdMs":156.433,"memDeltaMB":109.873},{"category":"Aritmetica","operation":"mul scalar","size":600,"type":"Float64M","avgMs":263.016,"minMs":176.308,"maxMs":368.499,"stdMs":78.518,"memDeltaMB":109.873},{"category":"Aritmetica","operation":"pow(2)","size":600,"type":"Float64M","avgMs":2547.533,"minMs":1520.726,"maxMs":3443.037,"stdMs":711.537,"memDeltaMB":214.2362},{"category":"DotOps","operation":"dotMul","size":600,"type":"Float64M","avgMs":466.315,"minMs":202.291,"maxMs":1026.013,"stdMs":292.554,"memDeltaMB":109.8741},{"category":"DotOps","operation":"dotDiv","size":600,"type":"Float64M","avgMs":541.788,"minMs":156.099,"maxMs":1175.038,"stdMs":356.062,"memDeltaMB":109.8741},{"category":"DotOps","operation":"dotPow(2)","size":600,"type":"Float64M","avgMs":765.476,"minMs":458.88,"maxMs":1238.09,"stdMs":270.938,"memDeltaMB":109.8732},{"category":"Unarie","operation":"abs","size":600,"type":"Float64M","avgMs":1208.823,"minMs":632.984,"maxMs":2400.709,"stdMs":627.495,"memDeltaMB":109.8733},{"category":"Unarie","operation":"sqrt","size":600,"type":"Float64M","avgMs":839.733,"minMs":378.118,"maxMs":1368.843,"stdMs":363.473,"memDeltaMB":109.8733},{"category":"Unarie","operation":"round","size":600,"type":"Float64M","avgMs":661.165,"minMs":244.16,"maxMs":1284.536,"stdMs":349.884,"memDeltaMB":109.8733},{"category":"Unarie","operation":"negate","size":600,"type":"Float64M","avgMs":301.332,"minMs":134.03,"maxMs":519.854,"stdMs":129.529,"memDeltaMB":109.8736},{"category":"Unarie","operation":"exp","size":600,"type":"Float64M","avgMs":1222.109,"minMs":1096.402,"maxMs":1551.75,"stdMs":169.478,"memDeltaMB":197.7569},{"category":"Unarie","operation":"sin","size":600,"type":"Float64M","avgMs":302.864,"minMs":145.035,"maxMs":691.376,"stdMs":199.613,"memDeltaMB":109.8732},{"category":"Unarie","operation":"cos","size":600,"type":"Float64M","avgMs":605.879,"minMs":213.855,"maxMs":1186.624,"stdMs":378.434,"memDeltaMB":109.8733},{"category":"Trasform.","operation":"transpose","size":600,"type":"Float64M","avgMs":396.058,"minMs":332.689,"maxMs":520.616,"stdMs":68.964,"memDeltaMB":109.873},{"category":"Trasform.","operation":"ct","size":600,"type":"Float64M","avgMs":131.046,"minMs":10.822,"maxMs":500.117,"stdMs":185.849,"memDeltaMB":13.7342},{"category":"Trasform.","operation":"flip ud","size":600,"type":"Float64M","avgMs":40.694,"minMs":9.949,"maxMs":121.736,"stdMs":41.723,"memDeltaMB":13.7342},{"category":"Trasform.","operation":"flip lr","size":600,"type":"Float64M","avgMs":51.448,"minMs":10.633,"maxMs":139.42,"stdMs":48.186,"memDeltaMB":13.7342},{"category":"Trasform.","operation":"rot90","size":600,"type":"Float64M","avgMs":21.719,"minMs":12.4,"maxMs":47.808,"stdMs":13.197,"memDeltaMB":13.7342},{"category":"Trasform.","operation":"repmat 2x2","size":600,"type":"Float64M","avgMs":143.463,"minMs":64.388,"maxMs":276.772,"stdMs":84.668,"memDeltaMB":10.9866},{"category":"Stat.","operation":"sum col","size":600,"type":"Float64M","avgMs":30.2,"minMs":5.994,"maxMs":113.11,"stdMs":41.515,"memDeltaMB":0.1852},{"category":"Stat.","operation":"sum row","size":600,"type":"Float64M","avgMs":30.592,"minMs":10.304,"maxMs":65.709,"stdMs":21.157,"memDeltaMB":0.1852},{"category":"Stat.","operation":"mean","size":600,"type":"Float64M","avgMs":72.509,"minMs":9.496,"maxMs":249.643,"stdMs":90.36,"memDeltaMB":0.3455},{"category":"Stat.","operation":"max","size":600,"type":"Float64M","avgMs":28.822,"minMs":8.607,"maxMs":66.607,"stdMs":21.249,"memDeltaMB":0.5635},{"category":"Stat.","operation":"totalSum","size":600,"type":"Float64M","avgMs":49.679,"minMs":24.149,"maxMs":73.6,"stdMs":20.052,"memDeltaMB":0.001},{"category":"Stat.","operation":"norm Fro","size":600,"type":"Float64M","avgMs":38.872,"minMs":4.834,"maxMs":155.031,"stdMs":58.187,"memDeltaMB":0.0009},{"category":"Stat.","operation":"norm 1","size":600,"type":"Float64M","avgMs":74.659,"minMs":13.198,"maxMs":243.525,"stdMs":88.729,"memDeltaMB":0.0009},{"category":"Stat.","operation":"norm Inf","size":600,"type":"Float64M","avgMs":36.019,"minMs":5.397,"maxMs":102.031,"stdMs":35.23,"memDeltaMB":0.0009},{"category":"Algebra","operation":"trace","size":600,"type":"Float64M","avgMs":32.793,"minMs":5.469,"maxMs":120.285,"stdMs":44.129,"memDeltaMB":0.0014},{"category":"Decomp.","operation":"LUP","size":10,"type":"Float64M","avgMs":0.049,"minMs":0.024,"maxMs":0.132,"stdMs":0.042,"memDeltaMB":0.0491},{"category":"Decomp.","operation":"LU","size":10,"type":"Float64M","avgMs":0.159,"minMs":0.103,"maxMs":0.236,"stdMs":0.051,"memDeltaMB":0.3506},{"category":"Decomp.","operation":"LU total","size":10,"type":"Float64M","avgMs":0.304,"minMs":0.182,"maxMs":0.451,"stdMs":0.091,"memDeltaMB":0.4162},{"category":"Decomp.","operation":"QR","size":10,"type":"Float64M","avgMs":0.19,"minMs":0.055,"maxMs":0.615,"stdMs":0.214,"memDeltaMB":0.0802},{"category":"Decomp.","operation":"Cholesky","size":10,"type":"Float64M","avgMs":0.046,"minMs":0.021,"maxMs":0.135,"stdMs":0.044,"memDeltaMB":0.041},{"category":"Decomp.","operation":"LDLT","size":10,"type":"Float64M","avgMs":1.054,"minMs":0.031,"maxMs":5.029,"stdMs":1.988,"memDeltaMB":0.0498},{"category":"Decomp.","operation":"tril","size":10,"type":"Float64M","avgMs":0.021,"minMs":0.01,"maxMs":0.059,"stdMs":0.019,"memDeltaMB":0.0051},{"category":"Decomp.","operation":"triu","size":10,"type":"Float64M","avgMs":0.014,"minMs":0.009,"maxMs":0.035,"stdMs":0.01,"memDeltaMB":0.0051},{"category":"Decomp.","operation":"LUP","size":25,"type":"Float64M","avgMs":0.142,"minMs":0.115,"maxMs":0.208,"stdMs":0.035,"memDeltaMB":0.2744},{"category":"Decomp.","operation":"LU","size":25,"type":"Float64M","avgMs":5.471,"minMs":0.84,"maxMs":11.954,"stdMs":5.035,"memDeltaMB":0.1273},{"category":"Decomp.","operation":"LU total","size":25,"type":"Float64M","avgMs":3.251,"minMs":2.168,"maxMs":4.974,"stdMs":0.982,"memDeltaMB":0.5535},{"category":"Decomp.","operation":"QR","size":25,"type":"Float64M","avgMs":6.83,"minMs":0.194,"maxMs":19.418,"stdMs":8.264,"memDeltaMB":0.4807},{"category":"Decomp.","operation":"Cholesky","size":25,"type":"Float64M","avgMs":0.266,"minMs":0.128,"maxMs":0.473,"stdMs":0.166,"memDeltaMB":0.4506},{"category":"Decomp.","operation":"LDLT","size":25,"type":"Float64M","avgMs":0.449,"minMs":0.143,"maxMs":0.701,"stdMs":0.223,"memDeltaMB":0.2752},{"category":"Decomp.","operation":"tril","size":25,"type":"Float64M","avgMs":0.073,"minMs":0.025,"maxMs":0.158,"stdMs":0.057,"memDeltaMB":0.0251},{"category":"Decomp.","operation":"triu","size":25,"type":"Float64M","avgMs":0.032,"minMs":0.025,"maxMs":0.061,"stdMs":0.014,"memDeltaMB":0.0251},{"category":"Decomp.","operation":"LUP","size":50,"type":"Float64M","avgMs":0.832,"minMs":0.526,"maxMs":1.257,"stdMs":0.243,"memDeltaMB":1.076},{"category":"Decomp.","operation":"LU","size":50,"type":"Float64M","avgMs":4.975,"minMs":2.384,"maxMs":12.503,"stdMs":3.798,"memDeltaMB":0.9614},{"category":"Decomp.","operation":"LU total","size":50,"type":"Float64M","avgMs":5.615,"minMs":2.767,"maxMs":9.342,"stdMs":3.056,"memDeltaMB":0.439},{"category":"Decomp.","operation":"QR","size":50,"type":"Float64M","avgMs":2.058,"minMs":0.725,"maxMs":3.505,"stdMs":0.983,"memDeltaMB":1.5344},{"category":"Decomp.","operation":"Cholesky","size":50,"type":"Float64M","avgMs":0.457,"minMs":0.398,"maxMs":0.565,"stdMs":0.059,"memDeltaMB":0.9566},{"category":"Decomp.","operation":"LDLT","size":50,"type":"Float64M","avgMs":0.814,"minMs":0.626,"maxMs":1.05,"stdMs":0.16,"memDeltaMB":1.1442},{"category":"Decomp.","operation":"tril","size":50,"type":"Float64M","avgMs":0.128,"minMs":0.099,"maxMs":0.233,"stdMs":0.052,"memDeltaMB":0.0966},{"category":"Decomp.","operation":"triu","size":50,"type":"Float64M","avgMs":0.1,"minMs":0.085,"maxMs":0.134,"stdMs":0.018,"memDeltaMB":0.0966},{"category":"Decomp.","operation":"LUP","size":100,"type":"Float64M","avgMs":1.049,"minMs":0.896,"maxMs":1.272,"stdMs":0.168,"memDeltaMB":3.6363},{"category":"Decomp.","operation":"LU","size":100,"type":"Float64M","avgMs":98.472,"minMs":32.323,"maxMs":198.8,"stdMs":64.984,"memDeltaMB":2.1797},{"category":"Decomp.","operation":"LU total","size":100,"type":"Float64M","avgMs":166.201,"minMs":89.91,"maxMs":244.653,"stdMs":60.853,"memDeltaMB":17.231},{"category":"Decomp.","operation":"QR","size":100,"type":"Float64M","avgMs":6.535,"minMs":3.851,"maxMs":10.957,"stdMs":2.53,"memDeltaMB":6.1366},{"category":"Decomp.","operation":"Cholesky","size":100,"type":"Float64M","avgMs":0.923,"minMs":0.656,"maxMs":1.329,"stdMs":0.27,"memDeltaMB":3.0683},{"category":"Decomp.","operation":"LDLT","size":100,"type":"Float64M","avgMs":7.789,"minMs":2.027,"maxMs":15.934,"stdMs":4.854,"memDeltaMB":3.6416},{"category":"Decomp.","operation":"tril","size":100,"type":"Float64M","avgMs":0.135,"minMs":0.113,"maxMs":0.187,"stdMs":0.027,"memDeltaMB":0.3986},{"category":"Decomp.","operation":"triu","size":100,"type":"Float64M","avgMs":0.192,"minMs":0.11,"maxMs":0.459,"stdMs":0.134,"memDeltaMB":0.3986},{"category":"Decomp.","operation":"LUP","size":200,"type":"Float64M","avgMs":19.819,"minMs":6.57,"maxMs":57.583,"stdMs":19.124,"memDeltaMB":13.7985},{"category":"Decomp.","operation":"LU","size":200,"type":"Float64M","avgMs":746.391,"minMs":600.055,"maxMs":1064.939,"stdMs":170.089,"memDeltaMB":23.616},{"category":"Decomp.","operation":"LU total","size":200,"type":"Float64M","avgMs":1278.908,"minMs":473.221,"maxMs":1968.747,"stdMs":576.651,"memDeltaMB":27.7852},{"category":"Decomp.","operation":"QR","size":200,"type":"Float64M","avgMs":63.3,"minMs":32.693,"maxMs":126.796,"stdMs":34.633,"memDeltaMB":10.1424},{"category":"Decomp.","operation":"Cholesky","size":200,"type":"Float64M","avgMs":44.587,"minMs":11.289,"maxMs":168.33,"stdMs":61.927,"memDeltaMB":12.2103},{"category":"Decomp.","operation":"LDLT","size":200,"type":"Float64M","avgMs":15.057,"minMs":8.004,"maxMs":29.49,"stdMs":8.07,"memDeltaMB":13.791},{"category":"Decomp.","operation":"tril","size":200,"type":"Float64M","avgMs":21.285,"minMs":0.911,"maxMs":99.263,"stdMs":39.002,"memDeltaMB":1.5271},{"category":"Decomp.","operation":"triu","size":200,"type":"Float64M","avgMs":2.848,"minMs":0.952,"maxMs":6.604,"stdMs":2.134,"memDeltaMB":1.5271},{"category":"Solver","operation":"LUP","size":10,"type":"Float64M","avgMs":0.104,"minMs":0.064,"maxMs":0.237,"stdMs":0.067,"memDeltaMB":0.1127,"residual":8.84609517654315e-17},{"category":"Solver","operation":"LU","size":10,"type":"Float64M","avgMs":0.19,"minMs":0.085,"maxMs":0.458,"stdMs":0.137,"memDeltaMB":0.4032,"residual":8.84609517654315e-17},{"category":"Solver","operation":"QR","size":10,"type":"Float64M","avgMs":0.177,"minMs":0.062,"maxMs":0.342,"stdMs":0.119,"memDeltaMB":0.1387,"residual":8.846095176543149e-17},{"category":"Solver","operation":"Cholesky","size":10,"type":"Float64M","avgMs":0.089,"minMs":0.051,"maxMs":0.212,"stdMs":0.061,"memDeltaMB":0.108,"residual":7.30815437312771e-17},{"category":"Solver","operation":"LDLT","size":10,"type":"Float64M","avgMs":0.528,"minMs":0.089,"maxMs":1.38,"stdMs":0.48,"memDeltaMB":0.1547,"residual":7.308154373127714e-17},{"category":"Solver","operation":"Jacobi","size":10,"type":"Float64M","avgMs":0.91,"minMs":0.051,"maxMs":3.995,"stdMs":1.544,"memDeltaMB":0.281,"residual":1.8116714460920238e-11},{"category":"Solver","operation":"Gauss-Seidel","size":10,"type":"Float64M","avgMs":0.178,"minMs":0.043,"maxMs":0.484,"stdMs":0.16,"memDeltaMB":0.4574,"residual":2.8559618277506285e-12},{"category":"Solver","operation":"SOR ω=1.0","size":10,"type":"Float64M","avgMs":0.126,"minMs":0.027,"maxMs":0.372,"stdMs":0.133,"memDeltaMB":0.447,"residual":2.8558733667988637e-12},{"category":"Solver","operation":"SOR ω=1.5","size":10,"type":"Float64M","avgMs":0.044,"minMs":0.024,"maxMs":0.117,"stdMs":0.037,"memDeltaMB":0.0105,"residual":6.144276557280308e-12},{"category":"Solver","operation":"CG (SPD)","size":10,"type":"Float64M","avgMs":0.125,"minMs":0.017,"maxMs":0.434,"stdMs":0.16,"memDeltaMB":0.4276,"residual":4.7868411143985e-15},{"category":"Solver","operation":"LUP","size":25,"type":"Float64M","avgMs":0.145,"minMs":0.085,"maxMs":0.325,"stdMs":0.091,"memDeltaMB":0.2594,"residual":2.7285071503783535e-16},{"category":"Solver","operation":"LU","size":25,"type":"Float64M","avgMs":0.45,"minMs":0.195,"maxMs":1.357,"stdMs":0.453,"memDeltaMB":1.5498,"residual":2.7285071503783535e-16},{"category":"Solver","operation":"QR","size":25,"type":"Float64M","avgMs":0.182,"minMs":0.139,"maxMs":0.315,"stdMs":0.066,"memDeltaMB":0.439,"residual":1.7053169689864711e-16},{"category":"Solver","operation":"Cholesky","size":25,"type":"Float64M","avgMs":0.169,"minMs":0.108,"maxMs":0.257,"stdMs":0.067,"memDeltaMB":0.2492,"residual":1.0459020878550917e-16},{"category":"Solver","operation":"LDLT","size":25,"type":"Float64M","avgMs":0.44,"minMs":0.179,"maxMs":1.21,"stdMs":0.387,"memDeltaMB":0.5665,"residual":1.0459020878550807e-16},{"category":"Solver","operation":"Jacobi","size":25,"type":"Float64M","avgMs":0.204,"minMs":0.16,"maxMs":0.325,"stdMs":0.062,"memDeltaMB":0.021,"residual":2.397358469379592e-11},{"category":"Solver","operation":"Gauss-Seidel","size":25,"type":"Float64M","avgMs":0.07,"minMs":0.046,"maxMs":0.147,"stdMs":0.039,"memDeltaMB":0.021,"residual":1.54372113300107e-12},{"category":"Solver","operation":"SOR ω=1.0","size":25,"type":"Float64M","avgMs":0.08,"minMs":0.041,"maxMs":0.208,"stdMs":0.064,"memDeltaMB":0.0208,"residual":1.5436529203223107e-12},{"category":"Solver","operation":"SOR ω=1.5","size":25,"type":"Float64M","avgMs":0.112,"minMs":0.089,"maxMs":0.185,"stdMs":0.036,"memDeltaMB":0.0208,"residual":1.4076402494927096e-11},{"category":"Solver","operation":"CG (SPD)","size":25,"type":"Float64M","avgMs":0.088,"minMs":0.051,"maxMs":0.212,"stdMs":0.062,"memDeltaMB":0.021,"residual":1.7780335493536756e-15},{"category":"Solver","operation":"LUP","size":50,"type":"Float64M","avgMs":1.692,"minMs":1.335,"maxMs":2.491,"stdMs":0.409,"memDeltaMB":0.9357,"residual":2.2517471834618615e-16},{"category":"Solver","operation":"LU","size":50,"type":"Float64M","avgMs":11.003,"minMs":1.648,"maxMs":41.611,"stdMs":15.342,"memDeltaMB":11.9158,"residual":2.2517471834618615e-16},{"category":"Solver","operation":"QR","size":50,"type":"Float64M","avgMs":4.486,"minMs":0.725,"maxMs":19.417,"stdMs":7.466,"memDeltaMB":1.6849,"residual":2.6270383807055036e-16},{"category":"Solver","operation":"Cholesky","size":50,"type":"Float64M","avgMs":0.396,"minMs":0.291,"maxMs":0.617,"stdMs":0.124,"memDeltaMB":0.9208,"residual":1.532296803336235e-16},{"category":"Solver","operation":"LDLT","size":50,"type":"Float64M","avgMs":0.397,"minMs":0.302,"maxMs":0.53,"stdMs":0.08,"memDeltaMB":1.568,"residual":1.5322968033362534e-16},{"category":"Solver","operation":"Jacobi","size":50,"type":"Float64M","avgMs":7.152,"minMs":1.694,"maxMs":27.914,"stdMs":10.382,"memDeltaMB":0.0381,"residual":2.8078837029109276e-11},{"category":"Solver","operation":"Gauss-Seidel","size":50,"type":"Float64M","avgMs":1.053,"minMs":0.281,"maxMs":1.924,"stdMs":0.663,"memDeltaMB":0.0382,"residual":5.93748203160887e-12},{"category":"Solver","operation":"SOR ω=1.0","size":50,"type":"Float64M","avgMs":2.501,"minMs":0.284,"maxMs":11.143,"stdMs":4.321,"memDeltaMB":0.038,"residual":5.937557089848319e-12},{"category":"Solver","operation":"SOR ω=1.5","size":50,"type":"Float64M","avgMs":0.629,"minMs":0.377,"maxMs":1.101,"stdMs":0.255,"memDeltaMB":0.038,"residual":1.3810190650764236e-11},{"category":"Solver","operation":"CG (SPD)","size":50,"type":"Float64M","avgMs":0.296,"minMs":0.2,"maxMs":0.606,"stdMs":0.156,"memDeltaMB":0.0381,"residual":1.971555220302302e-14},{"category":"Solver","operation":"LUP","size":100,"type":"Float64M","avgMs":3.218,"minMs":1.393,"maxMs":9.816,"stdMs":3.301,"memDeltaMB":3.854,"residual":5.134769911791333e-16},{"category":"Solver","operation":"LU","size":100,"type":"Float64M","avgMs":62.888,"minMs":14.094,"maxMs":94.125,"stdMs":32.02,"memDeltaMB":2.3927,"residual":5.134769911791333e-16},{"category":"Solver","operation":"QR","size":100,"type":"Float64M","avgMs":6.887,"minMs":3.447,"maxMs":13.801,"stdMs":3.888,"memDeltaMB":6.7355,"residual":7.335385588273337e-16},{"category":"Solver","operation":"Cholesky","size":100,"type":"Float64M","avgMs":4.92,"minMs":1.593,"maxMs":7.825,"stdMs":2.484,"memDeltaMB":3.6555,"residual":3.1284928242182115e-16},{"category":"Solver","operation":"LDLT","size":100,"type":"Float64M","avgMs":2.138,"minMs":1.764,"maxMs":2.359,"stdMs":0.216,"memDeltaMB":6.1801,"residual":3.6499082949211827e-16},{"category":"Solver","operation":"Jacobi","size":100,"type":"Float64M","avgMs":8.378,"minMs":7.741,"maxMs":9.226,"stdMs":0.569,"memDeltaMB":0.0724,"residual":2.8239950823172306e-11},{"category":"Solver","operation":"Gauss-Seidel","size":100,"type":"Float64M","avgMs":1.423,"minMs":0.698,"maxMs":2.37,"stdMs":0.63,"memDeltaMB":0.0725,"residual":1.6132713524275243e-12},{"category":"Solver","operation":"SOR ω=1.0","size":100,"type":"Float64M","avgMs":1.248,"minMs":0.694,"maxMs":2.546,"stdMs":0.674,"memDeltaMB":0.0723,"residual":1.6131246447157582e-12},{"category":"Solver","operation":"SOR ω=1.5","size":100,"type":"Float64M","avgMs":2.052,"minMs":1.447,"maxMs":3.562,"stdMs":0.769,"memDeltaMB":0.0723,"residual":1.4147171353423466e-11},{"category":"Solver","operation":"CG (SPD)","size":100,"type":"Float64M","avgMs":0.977,"minMs":0.772,"maxMs":1.339,"stdMs":0.206,"memDeltaMB":0.0724,"residual":7.091250401548576e-15},{"category":"Solver","operation":"LUP","size":200,"type":"Float64M","avgMs":11.792,"minMs":8.123,"maxMs":19.095,"stdMs":3.819,"memDeltaMB":14.1759,"residual":7.923876944982422e-16},{"category":"Solver","operation":"LU","size":200,"type":"Float64M","avgMs":362.367,"minMs":229.889,"maxMs":641.413,"stdMs":154.061,"memDeltaMB":24.7786,"residual":7.923876944982422e-16},{"category":"Solver","operation":"QR","size":200,"type":"Float64M","avgMs":85.838,"minMs":71.746,"maxMs":108.84,"stdMs":13.302,"memDeltaMB":10.8825,"residual":8.644229394526293e-16},{"category":"Solver","operation":"Cholesky","size":200,"type":"Float64M","avgMs":74.261,"minMs":17.261,"maxMs":118.971,"stdMs":37.53,"memDeltaMB":13.9243,"residual":3.90178491897369e-16},{"category":"Solver","operation":"LDLT","size":200,"type":"Float64M","avgMs":66.104,"minMs":15.282,"maxMs":100.6,"stdMs":32.977,"memDeltaMB":9.4646,"residual":4.459182764541361e-16},{"category":"Solver","operation":"Jacobi","size":200,"type":"Float64M","avgMs":52.148,"minMs":46.756,"maxMs":57.272,"stdMs":4.114,"memDeltaMB":0.1411,"residual":9.035678398530704e-8},{"category":"Solver","operation":"Gauss-Seidel","size":200,"type":"Float64M","avgMs":7.816,"minMs":2.93,"maxMs":13.514,"stdMs":3.739,"memDeltaMB":0.1412,"residual":1.8427336011786684e-12},{"category":"Solver","operation":"SOR ω=1.0","size":200,"type":"Float64M","avgMs":11.149,"minMs":8.188,"maxMs":14.423,"stdMs":2.368,"memDeltaMB":0.141,"residual":1.8428056364236226e-12},{"category":"Solver","operation":"SOR ω=1.5","size":200,"type":"Float64M","avgMs":28.246,"minMs":21.029,"maxMs":36.786,"stdMs":5.527,"memDeltaMB":0.141,"residual":7.616106360885067e-12},{"category":"Solver","operation":"CG (SPD)","size":200,"type":"Float64M","avgMs":5.54,"minMs":4.301,"maxMs":6.954,"stdMs":0.955,"memDeltaMB":0.1411,"residual":1.1147956911359225e-15},{"category":"Scalabilità","operation":"mul A×B","size":10,"type":"Float64M","avgMs":0.055,"minMs":0.01,"maxMs":0.137,"stdMs":0.059,"memDeltaMB":0.0198},{"category":"Scalabilità","operation":"mul A×B","size":25,"type":"Float64M","avgMs":0.807,"minMs":0.125,"maxMs":2.057,"stdMs":0.885,"memDeltaMB":0.2735},{"category":"Scalabilità","operation":"mul A×B","size":50,"type":"Float64M","avgMs":0.399,"minMs":0.331,"maxMs":0.471,"stdMs":0.057,"memDeltaMB":0.4593},{"category":"Scalabilità","operation":"mul A×B","size":100,"type":"Float64M","avgMs":2.491,"minMs":1.465,"maxMs":4.219,"stdMs":1.229,"memDeltaMB":1.8394},{"category":"Scalabilità","operation":"mul A×B","size":150,"type":"Float64M","avgMs":9.169,"minMs":7.276,"maxMs":10.432,"stdMs":1.363,"memDeltaMB":4.1215},{"category":"Scalabilità","operation":"mul A×B","size":200,"type":"Float64M","avgMs":34.453,"minMs":28.139,"maxMs":45.949,"stdMs":8.142,"memDeltaMB":7.3259},{"category":"Scalabilità","operation":"mul A×B","size":300,"type":"Float64M","avgMs":249.707,"minMs":215.343,"maxMs":295.533,"stdMs":33.726,"memDeltaMB":16.4814},{"category":"Scalabilità","operation":"mul A×B","size":400,"type":"Float64M","avgMs":146.989,"minMs":103.129,"maxMs":228.318,"stdMs":57.568,"memDeltaMB":20.504},{"category":"Scalabilità","operation":"mul A×B","size":500,"type":"Float64M","avgMs":190.638,"minMs":141.851,"maxMs":264.696,"stdMs":53.24,"memDeltaMB":30.6882},{"category":"Iterativi","operation":"SOR ω=0.5","size":50,"type":"Float64M","avgMs":0.457,"minMs":0.204,"maxMs":1.192,"stdMs":0.379,"memDeltaMB":0.038,"residual":2.6385661454101052e-11},{"category":"Iterativi","operation":"SOR ω=0.8","size":50,"type":"Float64M","avgMs":0.3,"minMs":0.193,"maxMs":0.465,"stdMs":0.109,"memDeltaMB":0.038,"residual":4.0601142780346266e-12},{"category":"Iterativi","operation":"SOR ω=1","size":50,"type":"Float64M","avgMs":0.243,"minMs":0.155,"maxMs":0.496,"stdMs":0.128,"memDeltaMB":0.038,"residual":4.096474184484453e-12},{"category":"Iterativi","operation":"SOR ω=1.2","size":50,"type":"Float64M","avgMs":0.361,"minMs":0.183,"maxMs":0.73,"stdMs":0.209,"memDeltaMB":0.038,"residual":6.768663833386518e-12},{"category":"Iterativi","operation":"SOR ω=1.5","size":50,"type":"Float64M","avgMs":0.458,"minMs":0.32,"maxMs":0.665,"stdMs":0.113,"memDeltaMB":0.038,"residual":1.2396733209259445e-11},{"category":"Iterativi","operation":"SOR ω=1.8","size":50,"type":"Float64M","avgMs":1.576,"minMs":0.87,"maxMs":2.31,"stdMs":0.57,"memDeltaMB":0.038,"residual":1.360199259343198e-11},{"category":"Iterativi","operation":"SOR ω=1.9","size":50,"type":"Float64M","avgMs":2.522,"minMs":2.017,"maxMs":3.767,"stdMs":0.639,"memDeltaMB":0.038,"residual":1.4713265760038467e-11},{"category":"Iterativi vs Diretti","operation":"Jacobi","size":50,"type":"Float64M","avgMs":2.537,"minMs":1.587,"maxMs":5.216,"stdMs":1.367,"memDeltaMB":0.0381,"residual":2.7912212930445896e-11},{"category":"Iterativi vs Diretti","operation":"Gauss-Seidel","size":50,"type":"Float64M","avgMs":0.26,"minMs":0.186,"maxMs":0.372,"stdMs":0.073,"memDeltaMB":0.0382,"residual":4.096700022412922e-12},{"category":"Iterativi vs Diretti","operation":"SOR ω=1.0","size":50,"type":"Float64M","avgMs":0.216,"minMs":0.129,"maxMs":0.448,"stdMs":0.118,"memDeltaMB":0.0342,"residual":4.096474184484453e-12},{"category":"Iterativi vs Diretti","operation":"SOR ω=1.5","size":50,"type":"Float64M","avgMs":1.347,"minMs":0.395,"maxMs":3.529,"stdMs":1.126,"memDeltaMB":0.0342,"residual":1.2396733209259445e-11},{"category":"Iterativi vs Diretti","operation":"CG","size":50,"type":"Float64M","avgMs":0.479,"minMs":0.121,"maxMs":1.584,"stdMs":0.56,"memDeltaMB":0.038,"residual":2.665263952483027e-13},{"category":"Iterativi vs Diretti","operation":"Cholesky","size":50,"type":"Float64M","avgMs":3.558,"minMs":0.463,"maxMs":6.848,"stdMs":2.588,"memDeltaMB":0.9193,"residual":3.763965474484537e-16},{"category":"Iterativi vs Diretti","operation":"LUP","size":50,"type":"Float64M","avgMs":1.998,"minMs":1.057,"maxMs":4.462,"stdMs":1.264,"memDeltaMB":0.9279,"residual":3.0111723795876295e-16},{"category":"Proprietà","operation":"isSquare","size":50,"type":"Float64M","avgMs":0.024,"minMs":0.001,"maxMs":0.117,"stdMs":0.046,"memDeltaMB":0.0007},{"category":"Proprietà","operation":"isSymmetric","size":50,"type":"Float64M","avgMs":0.034,"minMs":0.016,"maxMs":0.083,"stdMs":0.025,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isUpperTriangular","size":50,"type":"Float64M","avgMs":0.132,"minMs":0.034,"maxMs":0.338,"stdMs":0.119,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isLowerTriangular","size":50,"type":"Float64M","avgMs":0.062,"minMs":0.025,"maxMs":0.175,"stdMs":0.057,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isDiagonal","size":50,"type":"Float64M","avgMs":0.073,"minMs":0.023,"maxMs":0.247,"stdMs":0.087,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isIdentity","size":50,"type":"Float64M","avgMs":0.318,"minMs":0.25,"maxMs":0.545,"stdMs":0.114,"memDeltaMB":0.6683},{"category":"Proprietà","operation":"isOrthogonal","size":50,"type":"Float64M","avgMs":5.223,"minMs":3.851,"maxMs":6.85,"stdMs":1.221,"memDeltaMB":1.2953},{"category":"Proprietà","operation":"isZeroMatrix","size":50,"type":"Float64M","avgMs":0.089,"minMs":0.026,"maxMs":0.189,"stdMs":0.074,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isInvertible","size":50,"type":"Float64M","avgMs":0.299,"minMs":0.186,"maxMs":0.671,"stdMs":0.187,"memDeltaMB":0.8901},{"category":"Proprietà","operation":"isSingular","size":50,"type":"Float64M","avgMs":0.078,"minMs":0.038,"maxMs":0.22,"stdMs":0.071,"memDeltaMB":0.0065},{"category":"Proprietà","operation":"isPositiveDefinite","size":50,"type":"Float64M","avgMs":0.206,"minMs":0.171,"maxMs":0.29,"stdMs":0.043,"memDeltaMB":0.7663},{"category":"Proprietà","operation":"isPositiveSemiDef","size":50,"type":"Float64M","avgMs":0.077,"minMs":0.035,"maxMs":0.195,"stdMs":0.06,"memDeltaMB":0.0092},{"category":"Proprietà","operation":"isDiagonallyDominant","size":50,"type":"Float64M","avgMs":0.06,"minMs":0.032,"maxMs":0.119,"stdMs":0.032,"memDeltaMB":0.0098},{"category":"Proprietà","operation":"hasZeroTrace","size":50,"type":"Float64M","avgMs":0.011,"minMs":0.006,"maxMs":0.029,"stdMs":0.009,"memDeltaMB":0.014},{"category":"Proprietà","operation":"hasFiniteValues","size":50,"type":"Float64M","avgMs":0.109,"minMs":0.041,"maxMs":0.242,"stdMs":0.074,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isStochastic","size":50,"type":"Float64M","avgMs":0.572,"minMs":0.313,"maxMs":1.431,"stdMs":0.433,"memDeltaMB":0.682},{"category":"Proprietà","operation":"isSquare","size":100,"type":"Float64M","avgMs":0.006,"minMs":0,"maxMs":0.025,"stdMs":0.01,"memDeltaMB":0.0007},{"category":"Proprietà","operation":"isSymmetric","size":100,"type":"Float64M","avgMs":1.663,"minMs":0.131,"maxMs":6.106,"stdMs":2.248,"memDeltaMB":0.2948},{"category":"Proprietà","operation":"isUpperTriangular","size":100,"type":"Float64M","avgMs":0.209,"minMs":0.1,"maxMs":0.52,"stdMs":0.158,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isLowerTriangular","size":100,"type":"Float64M","avgMs":1.516,"minMs":0.053,"maxMs":7.117,"stdMs":2.802,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isDiagonal","size":100,"type":"Float64M","avgMs":0.222,"minMs":0.063,"maxMs":0.778,"stdMs":0.279,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isIdentity","size":100,"type":"Float64M","avgMs":0.071,"minMs":0.051,"maxMs":0.123,"stdMs":0.027,"memDeltaMB":0.0007},{"category":"Proprietà","operation":"isOrthogonal","size":100,"type":"Float64M","avgMs":21.572,"minMs":9.959,"maxMs":40.924,"stdMs":10.74,"memDeltaMB":9.0154},{"category":"Proprietà","operation":"isZeroMatrix","size":100,"type":"Float64M","avgMs":0.135,"minMs":0.067,"maxMs":0.389,"stdMs":0.127,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isInvertible","size":100,"type":"Float64M","avgMs":2.063,"minMs":0.789,"maxMs":2.817,"stdMs":0.687,"memDeltaMB":4.0941},{"category":"Proprietà","operation":"isSingular","size":100,"type":"Float64M","avgMs":0.143,"minMs":0.071,"maxMs":0.318,"stdMs":0.092,"memDeltaMB":0.0067},{"category":"Proprietà","operation":"isPositiveDefinite","size":100,"type":"Float64M","avgMs":1.149,"minMs":0.692,"maxMs":1.941,"stdMs":0.489,"memDeltaMB":3.0661},{"category":"Proprietà","operation":"isPositiveSemiDef","size":100,"type":"Float64M","avgMs":0.122,"minMs":0.075,"maxMs":0.271,"stdMs":0.075,"memDeltaMB":0.0015},{"category":"Proprietà","operation":"isDiagonallyDominant","size":100,"type":"Float64M","avgMs":0.633,"minMs":0.203,"maxMs":1.375,"stdMs":0.412,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"hasZeroTrace","size":100,"type":"Float64M","avgMs":0.014,"minMs":0.007,"maxMs":0.041,"stdMs":0.013,"memDeltaMB":0.0274},{"category":"Proprietà","operation":"hasFiniteValues","size":100,"type":"Float64M","avgMs":0.172,"minMs":0.089,"maxMs":0.424,"stdMs":0.128,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isStochastic","size":100,"type":"Float64M","avgMs":2.015,"minMs":1.122,"maxMs":4.738,"stdMs":1.367,"memDeltaMB":2.6711},{"category":"Proprietà","operation":"isSquare","size":200,"type":"Float64M","avgMs":0.003,"minMs":0,"maxMs":0.015,"stdMs":0.006,"memDeltaMB":0.0007},{"category":"Proprietà","operation":"isSymmetric","size":200,"type":"Float64M","avgMs":0.96,"minMs":0.569,"maxMs":1.677,"stdMs":0.394,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isUpperTriangular","size":200,"type":"Float64M","avgMs":0.874,"minMs":0.644,"maxMs":1.147,"stdMs":0.195,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isLowerTriangular","size":200,"type":"Float64M","avgMs":1,"minMs":0.913,"maxMs":1.105,"stdMs":0.079,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isDiagonal","size":200,"type":"Float64M","avgMs":0.486,"minMs":0.343,"maxMs":0.696,"stdMs":0.115,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isIdentity","size":200,"type":"Float64M","avgMs":0.373,"minMs":0.294,"maxMs":0.613,"stdMs":0.121,"memDeltaMB":0.0007},{"category":"Proprietà","operation":"isOrthogonal","size":200,"type":"Float64M","avgMs":352.519,"minMs":181.448,"maxMs":830.402,"stdMs":246.064,"memDeltaMB":3.852},{"category":"Proprietà","operation":"isZeroMatrix","size":200,"type":"Float64M","avgMs":0.275,"minMs":0.259,"maxMs":0.326,"stdMs":0.026,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isInvertible","size":200,"type":"Float64M","avgMs":33.438,"minMs":6.336,"maxMs":98.533,"stdMs":34.027,"memDeltaMB":13.7985},{"category":"Proprietà","operation":"isSingular","size":200,"type":"Float64M","avgMs":2.363,"minMs":0.388,"maxMs":6.712,"stdMs":2.248,"memDeltaMB":0.0516},{"category":"Proprietà","operation":"isPositiveDefinite","size":200,"type":"Float64M","avgMs":11.069,"minMs":8.513,"maxMs":15.906,"stdMs":2.602,"memDeltaMB":12.2108},{"category":"Proprietà","operation":"isPositiveSemiDef","size":200,"type":"Float64M","avgMs":1.982,"minMs":0.669,"maxMs":4.057,"stdMs":1.331,"memDeltaMB":0.0015},{"category":"Proprietà","operation":"isDiagonallyDominant","size":200,"type":"Float64M","avgMs":3.307,"minMs":1.695,"maxMs":6.19,"stdMs":1.534,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"hasZeroTrace","size":200,"type":"Float64M","avgMs":0.046,"minMs":0.014,"maxMs":0.171,"stdMs":0.062,"memDeltaMB":0.0541},{"category":"Proprietà","operation":"hasFiniteValues","size":200,"type":"Float64M","avgMs":4.064,"minMs":2.625,"maxMs":7.354,"stdMs":1.714,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isStochastic","size":200,"type":"Float64M","avgMs":24.182,"minMs":2.42,"maxMs":108.712,"stdMs":42.269,"memDeltaMB":10.6823},{"category":"Proprietà","operation":"isSquare","size":400,"type":"Float64M","avgMs":0.002,"minMs":0,"maxMs":0.009,"stdMs":0.003,"memDeltaMB":0.0007},{"category":"Proprietà","operation":"isSymmetric","size":400,"type":"Float64M","avgMs":2.928,"minMs":2.017,"maxMs":4.458,"stdMs":0.827,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isUpperTriangular","size":400,"type":"Float64M","avgMs":2.245,"minMs":1.868,"maxMs":2.697,"stdMs":0.28,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isLowerTriangular","size":400,"type":"Float64M","avgMs":31.596,"minMs":3.099,"maxMs":95.833,"stdMs":34.521,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isDiagonal","size":400,"type":"Float64M","avgMs":2.822,"minMs":1.224,"maxMs":6.576,"stdMs":1.992,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isIdentity","size":400,"type":"Float64M","avgMs":2.206,"minMs":1.437,"maxMs":3.04,"stdMs":0.555,"memDeltaMB":0.0007},{"category":"Proprietà","operation":"isOrthogonal","size":400,"type":"Float64M","avgMs":2774.804,"minMs":1852.345,"maxMs":3684.853,"stdMs":662.843,"memDeltaMB":9.4423},{"category":"Proprietà","operation":"isZeroMatrix","size":400,"type":"Float64M","avgMs":2.048,"minMs":1.313,"maxMs":3.663,"stdMs":0.832,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isInvertible","size":400,"type":"Float64M","avgMs":269.198,"minMs":67.244,"maxMs":525.155,"stdMs":156.144,"memDeltaMB":45.0788},{"category":"Proprietà","operation":"isSingular","size":400,"type":"Float64M","avgMs":7.628,"minMs":1.106,"maxMs":24.363,"stdMs":9.056,"memDeltaMB":0.2504},{"category":"Proprietà","operation":"isPositiveDefinite","size":400,"type":"Float64M","avgMs":74.729,"minMs":57.531,"maxMs":93.897,"stdMs":13.482,"memDeltaMB":40.067},{"category":"Proprietà","operation":"isPositiveSemiDef","size":400,"type":"Float64M","avgMs":8.29,"minMs":4.536,"maxMs":12.163,"stdMs":2.641,"memDeltaMB":0.0015},{"category":"Proprietà","operation":"isDiagonallyDominant","size":400,"type":"Float64M","avgMs":5.991,"minMs":4.104,"maxMs":11.625,"stdMs":2.84,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"hasZeroTrace","size":400,"type":"Float64M","avgMs":0.299,"minMs":0.085,"maxMs":0.603,"stdMs":0.213,"memDeltaMB":0.1075},{"category":"Proprietà","operation":"hasFiniteValues","size":400,"type":"Float64M","avgMs":15.602,"minMs":10.321,"maxMs":34.23,"stdMs":9.321,"memDeltaMB":0.0012},{"category":"Proprietà","operation":"isStochastic","size":400,"type":"Float64M","avgMs":52.391,"minMs":27.657,"maxMs":100.886,"stdMs":27.851,"memDeltaMB":11.2672},{"category":"Aritm.","operation":"add (C)","size":5,"type":"Complex","avgMs":0.043,"minMs":0.009,"maxMs":0.171,"stdMs":0.064,"memDeltaMB":0.0232},{"category":"Aritm.","operation":"mul (C)","size":5,"type":"Complex","avgMs":0.518,"minMs":0.127,"maxMs":1.489,"stdMs":0.502,"memDeltaMB":0.5415},{"category":"Trasf.","operation":"ct (C)","size":5,"type":"Complex","avgMs":0.018,"minMs":0.008,"maxMs":0.055,"stdMs":0.019,"memDeltaMB":0.0175},{"category":"Stat.","operation":"norm Fro (C)","size":5,"type":"Complex","avgMs":0.119,"minMs":0.027,"maxMs":0.45,"stdMs":0.166,"memDeltaMB":0.0453},{"category":"Algebra","operation":"det (C)","size":5,"type":"Complex","avgMs":0.185,"minMs":0.043,"maxMs":0.477,"stdMs":0.174,"memDeltaMB":0.1393},{"category":"Decomp.","operation":"LUP (C)","size":5,"type":"Complex","avgMs":0.136,"minMs":0.058,"maxMs":0.253,"stdMs":0.086,"memDeltaMB":0.1254},{"category":"Decomp.","operation":"QR (C)","size":5,"type":"Complex","avgMs":0.323,"minMs":0.096,"maxMs":0.695,"stdMs":0.212,"memDeltaMB":0.3966},{"category":"Solver","operation":"LUP (C)","size":5,"type":"Complex","avgMs":0.484,"minMs":0.114,"maxMs":1.448,"stdMs":0.494,"memDeltaMB":0.5368,"residual":4.177864938672418e-17},{"category":"Solver","operation":"QR (C)","size":5,"type":"Complex","avgMs":0.274,"minMs":0.125,"maxMs":0.564,"stdMs":0.173,"memDeltaMB":0.3939,"residual":8.355729877344836e-17},{"category":"Aritm.","operation":"add (C)","size":10,"type":"Complex","avgMs":0.019,"minMs":0.01,"maxMs":0.045,"stdMs":0.014,"memDeltaMB":0.0432},{"category":"Aritm.","operation":"mul (C)","size":10,"type":"Complex","avgMs":0.548,"minMs":0.147,"maxMs":2.033,"stdMs":0.743,"memDeltaMB":0.7681},{"category":"Trasf.","operation":"ct (C)","size":10,"type":"Complex","avgMs":0.05,"minMs":0.027,"maxMs":0.087,"stdMs":0.022,"memDeltaMB":0.0661},{"category":"Stat.","operation":"norm Fro (C)","size":10,"type":"Complex","avgMs":0.046,"minMs":0.035,"maxMs":0.079,"stdMs":0.017,"memDeltaMB":0.1252},{"category":"Algebra","operation":"det (C)","size":10,"type":"Complex","avgMs":1.396,"minMs":0.188,"maxMs":6.141,"stdMs":2.373,"memDeltaMB":0.9047},{"category":"Decomp.","operation":"LUP (C)","size":10,"type":"Complex","avgMs":0.223,"minMs":0.195,"maxMs":0.305,"stdMs":0.042,"memDeltaMB":0.6811},{"category":"Decomp.","operation":"QR (C)","size":10,"type":"Complex","avgMs":5.216,"minMs":0.401,"maxMs":18.107,"stdMs":6.742,"memDeltaMB":1.1808},{"category":"Solver","operation":"LUP (C)","size":10,"type":"Complex","avgMs":0.515,"minMs":0.192,"maxMs":1.119,"stdMs":0.343,"memDeltaMB":0.6593,"residual":7.736776073094755e-17},{"category":"Solver","operation":"QR (C)","size":10,"type":"Complex","avgMs":2.189,"minMs":0.314,"maxMs":4.712,"stdMs":1.968,"memDeltaMB":1.3412,"residual":2.104630631817767e-16},{"category":"Aritm.","operation":"add (C)","size":25,"type":"Complex","avgMs":0.181,"minMs":0.057,"maxMs":0.614,"stdMs":0.217,"memDeltaMB":0.2636},{"category":"Aritm.","operation":"mul (C)","size":25,"type":"Complex","avgMs":0.483,"minMs":0.416,"maxMs":0.662,"stdMs":0.09,"memDeltaMB":5.9865},{"category":"Trasf.","operation":"ct (C)","size":25,"type":"Complex","avgMs":0.09,"minMs":0.06,"maxMs":0.202,"stdMs":0.056,"memDeltaMB":0.2636},{"category":"Stat.","operation":"norm Fro (C)","size":25,"type":"Complex","avgMs":0.15,"minMs":0.111,"maxMs":0.239,"stdMs":0.046,"memDeltaMB":0.7781},{"category":"Algebra","operation":"det (C)","size":25,"type":"Complex","avgMs":0.237,"minMs":0.2,"maxMs":0.323,"stdMs":0.046,"memDeltaMB":2.5353},{"category":"Decomp.","operation":"LUP (C)","size":25,"type":"Complex","avgMs":0.671,"minMs":0.209,"maxMs":1.562,"stdMs":0.488,"memDeltaMB":2.5091},{"category":"Decomp.","operation":"QR (C)","size":25,"type":"Complex","avgMs":1.416,"minMs":0.997,"maxMs":1.619,"stdMs":0.227,"memDeltaMB":7.6529},{"category":"Solver","operation":"LUP (C)","size":25,"type":"Complex","avgMs":2.729,"minMs":1.276,"maxMs":7.143,"stdMs":2.221,"memDeltaMB":3.9133,"residual":1.45443137694917e-16},{"category":"Solver","operation":"QR (C)","size":25,"type":"Complex","avgMs":1.943,"minMs":0.989,"maxMs":4.173,"stdMs":1.159,"memDeltaMB":9.3275,"residual":2.2996579257871475e-16},{"category":"Aritm.","operation":"add (C)","size":50,"type":"Complex","avgMs":0.978,"minMs":0.382,"maxMs":2.475,"stdMs":0.773,"memDeltaMB":1.1508},{"category":"Aritm.","operation":"mul (C)","size":50,"type":"Complex","avgMs":9.937,"minMs":5.01,"maxMs":22.814,"stdMs":6.911,"memDeltaMB":6.9574},{"category":"Trasf.","operation":"ct (C)","size":50,"type":"Complex","avgMs":0.134,"minMs":0.099,"maxMs":0.209,"stdMs":0.039,"memDeltaMB":1.0504},{"category":"Stat.","operation":"norm Fro (C)","size":50,"type":"Complex","avgMs":0.834,"minMs":0.442,"maxMs":1.904,"stdMs":0.554,"memDeltaMB":2.5646},{"category":"Algebra","operation":"det (C)","size":50,"type":"Complex","avgMs":8.01,"minMs":2.559,"maxMs":24.384,"stdMs":8.365,"memDeltaMB":4.3468},{"category":"Decomp.","operation":"LUP (C)","size":50,"type":"Complex","avgMs":6.449,"minMs":2.499,"maxMs":14.564,"stdMs":4.566,"memDeltaMB":5.8387},{"category":"Decomp.","operation":"QR (C)","size":50,"type":"Complex","avgMs":19.051,"minMs":6.678,"maxMs":50.244,"stdMs":15.799,"memDeltaMB":10.4289},{"category":"Solver","operation":"LUP (C)","size":50,"type":"Complex","avgMs":5.696,"minMs":3.551,"maxMs":7.544,"stdMs":1.324,"memDeltaMB":7.9326,"residual":2.9855273316920642e-16},{"category":"Solver","operation":"QR (C)","size":50,"type":"Complex","avgMs":16.406,"minMs":10.45,"maxMs":21.378,"stdMs":3.656,"memDeltaMB":3.7797,"residual":4.1908277968610095e-16},{"category":"Aritm.","operation":"add (C)","size":100,"type":"Complex","avgMs":0.914,"minMs":0.79,"maxMs":1.005,"stdMs":0.081,"memDeltaMB":4.2805},{"category":"Aritm.","operation":"mul (C)","size":100,"type":"Complex","avgMs":241.534,"minMs":144.533,"maxMs":360.851,"stdMs":89.646,"memDeltaMB":13.4552},{"category":"Trasf.","operation":"ct (C)","size":100,"type":"Complex","avgMs":0.339,"minMs":0.26,"maxMs":0.422,"stdMs":0.056,"memDeltaMB":4.2805},{"category":"Stat.","operation":"norm Fro (C)","size":100,"type":"Complex","avgMs":0.803,"minMs":0.542,"maxMs":1.058,"stdMs":0.185,"memDeltaMB":0.7562},{"category":"Algebra","operation":"det (C)","size":100,"type":"Complex","avgMs":119.927,"minMs":69.078,"maxMs":201.418,"stdMs":44.757,"memDeltaMB":14.5865},{"category":"Decomp.","operation":"LUP (C)","size":100,"type":"Complex","avgMs":81.066,"minMs":60.772,"maxMs":95.989,"stdMs":13.544,"memDeltaMB":5.4284},{"category":"Decomp.","operation":"QR (C)","size":100,"type":"Complex","avgMs":183.359,"minMs":115.764,"maxMs":286.743,"stdMs":62.885,"memDeltaMB":17.6198},{"category":"Solver","operation":"LUP (C)","size":100,"type":"Complex","avgMs":136.239,"minMs":58.468,"maxMs":217.228,"stdMs":53.756,"memDeltaMB":2.4521,"residual":4.868343902449379e-16},{"category":"Solver","operation":"QR (C)","size":100,"type":"Complex","avgMs":660.749,"minMs":172.507,"maxMs":1531.964,"stdMs":457.823,"memDeltaMB":25.3333,"residual":6.144383019101578e-16},{"category":"Aritm.","operation":"mul (R)","size":3,"type":"Rational","avgMs":0.128,"minMs":0.081,"maxMs":0.168,"stdMs":0.036,"memDeltaMB":0.0368},{"category":"Algebra","operation":"det (R)","size":3,"type":"Rational","avgMs":1.201,"minMs":0.552,"maxMs":2.294,"stdMs":0.777,"memDeltaMB":0.0313},{"category":"Solver","operation":"LUP (R)","size":3,"type":"Rational","avgMs":0.18,"minMs":0.12,"maxMs":0.257,"stdMs":0.057,"memDeltaMB":0.2663,"residual":0},{"category":"Aritm.","operation":"mul (R)","size":4,"type":"Rational","avgMs":0.467,"minMs":0.289,"maxMs":0.674,"stdMs":0.158,"memDeltaMB":0.323},{"category":"Algebra","operation":"det (R)","size":4,"type":"Rational","avgMs":0.14,"minMs":0.057,"maxMs":0.305,"stdMs":0.116,"memDeltaMB":0.2617},{"category":"Solver","operation":"LUP (R)","size":4,"type":"Rational","avgMs":0.24,"minMs":0.167,"maxMs":0.378,"stdMs":0.098,"memDeltaMB":0.0626,"residual":0},{"category":"Aritm.","operation":"mul (R)","size":5,"type":"Rational","avgMs":0.368,"minMs":0.27,"maxMs":0.493,"stdMs":0.093,"memDeltaMB":0.1761},{"category":"Algebra","operation":"det (R)","size":5,"type":"Rational","avgMs":0.161,"minMs":0.096,"maxMs":0.287,"stdMs":0.089,"memDeltaMB":0.0567},{"category":"Solver","operation":"LUP (R)","size":5,"type":"Rational","avgMs":0.29,"minMs":0.194,"maxMs":0.473,"stdMs":0.13,"memDeltaMB":0.2172,"residual":0},{"category":"Aritm.","operation":"mul (R)","size":6,"type":"Rational","avgMs":0.418,"minMs":0.361,"maxMs":0.487,"stdMs":0.052,"memDeltaMB":0.3061},{"category":"Algebra","operation":"det (R)","size":6,"type":"Rational","avgMs":0.311,"minMs":0.2,"maxMs":0.5,"stdMs":0.135,"memDeltaMB":0.1205},{"category":"Solver","operation":"LUP (R)","size":6,"type":"Rational","avgMs":3.332,"minMs":0.569,"maxMs":8.707,"stdMs":3.801,"memDeltaMB":0.1713,"residual":0},{"category":"Confronto","operation":"mul F64","size":5,"type":"Float64M","avgMs":2.546,"minMs":0.156,"maxMs":7.493,"stdMs":2.789,"memDeltaMB":0.0117},{"category":"Confronto","operation":"mul Cmx","size":5,"type":"Complex","avgMs":9.067,"minMs":0.009,"maxMs":44.17,"stdMs":17.557,"memDeltaMB":0.0976},{"category":"Confronto","operation":"mul Rat","size":5,"type":"Rational","avgMs":0.306,"minMs":0.133,"maxMs":0.646,"stdMs":0.241,"memDeltaMB":0.1318},{"category":"Confronto","operation":"mul F64","size":10,"type":"Float64M","avgMs":0.835,"minMs":0.037,"maxMs":4.005,"stdMs":1.585,"memDeltaMB":0.0403},{"category":"Confronto","operation":"mul Cmx","size":10,"type":"Complex","avgMs":0.148,"minMs":0.111,"maxMs":0.229,"stdMs":0.043,"memDeltaMB":0.7681},{"category":"Confronto","operation":"mul Rat","size":10,"type":"Rational","avgMs":0.866,"minMs":0.838,"maxMs":0.919,"stdMs":0.038,"memDeltaMB":1.0703},{"category":"Confronto","operation":"mul F64","size":20,"type":"Float64M","avgMs":0.439,"minMs":0.06,"maxMs":1.749,"stdMs":0.657,"memDeltaMB":0.1547},{"category":"Confronto","operation":"mul Cmx","size":20,"type":"Complex","avgMs":1.802,"minMs":0.973,"maxMs":3.729,"stdMs":1.02,"memDeltaMB":6.1209},{"category":"Confronto","operation":"mul Rat","size":20,"type":"Rational","avgMs":29.142,"minMs":22.751,"maxMs":40.552,"stdMs":8.088,"memDeltaMB":0.4868},{"category":"Confronto","operation":"mul F64","size":30,"type":"Float64M","avgMs":6.036,"minMs":0.182,"maxMs":29.087,"stdMs":11.526,"memDeltaMB":0.3631},{"category":"Confronto","operation":"mul Cmx","size":30,"type":"Complex","avgMs":11.732,"minMs":3.069,"maxMs":37.611,"stdMs":13.041,"memDeltaMB":4.9726},{"category":"Confronto","operation":"mul Rat","size":30,"type":"Rational","avgMs":199.741,"minMs":145.921,"maxMs":242.075,"stdMs":40.086,"memDeltaMB":10.6854},{"category":"Gallery","operation":"hilbert","size":100,"type":"Float64M","avgMs":1.479,"minMs":0.409,"maxMs":2.365,"stdMs":0.801,"memDeltaMB":3.8082},{"category":"Gallery","operation":"pascal (float)","size":100,"type":"Float64M","avgMs":4.679,"minMs":2.105,"maxMs":9.327,"stdMs":2.454,"memDeltaMB":3.5718},{"category":"Gallery","operation":"pascal (exact)","size":100,"type":"Float64M","avgMs":360.63,"minMs":185.433,"maxMs":492.691,"stdMs":115.384,"memDeltaMB":18.606},{"category":"Gallery","operation":"magic","size":100,"type":"Float64M","avgMs":0.311,"minMs":0.284,"maxMs":0.349,"stdMs":0.027,"memDeltaMB":3.0683},{"category":"Gallery","operation":"lehmer","size":100,"type":"Float64M","avgMs":3.889,"minMs":0.348,"maxMs":13.904,"stdMs":5.175,"memDeltaMB":3.3561},{"category":"Gallery","operation":"minij","size":100,"type":"Float64M","avgMs":1.21,"minMs":0.379,"maxMs":2.172,"stdMs":0.763,"memDeltaMB":3.0679},{"category":"Gallery","operation":"fiedler","size":100,"type":"Float64M","avgMs":1.402,"minMs":1.208,"maxMs":1.577,"stdMs":0.154,"memDeltaMB":3.0683},{"category":"Gallery","operation":"wilkinson","size":100,"type":"Float64M","avgMs":0.282,"minMs":0.149,"maxMs":0.584,"stdMs":0.167,"memDeltaMB":0.6104},{"category":"Gallery","operation":"grcar","size":100,"type":"Float64M","avgMs":0.719,"minMs":0.191,"maxMs":2.235,"stdMs":0.77,"memDeltaMB":0.6117},{"category":"Gallery","operation":"kahan","size":100,"type":"Float64M","avgMs":1.053,"minMs":0.653,"maxMs":1.546,"stdMs":0.307,"memDeltaMB":1.83},{"category":"Gallery","operation":"invhess","size":100,"type":"Float64M","avgMs":3.623,"minMs":0.358,"maxMs":14.065,"stdMs":5.273,"memDeltaMB":3.3039},{"category":"Gallery","operation":"cauchy","size":100,"type":"Float64M","avgMs":1.765,"minMs":0.332,"maxMs":3.975,"stdMs":1.361,"memDeltaMB":3.9608},{"category":"Gallery","operation":"tridiag","size":100,"type":"Float64M","avgMs":9.476,"minMs":0.236,"maxMs":16.447,"stdMs":5.235,"memDeltaMB":0.5891},{"category":"Gallery","operation":"binomial","size":100,"type":"Float64M","avgMs":118.001,"minMs":83.823,"maxMs":211.01,"stdMs":46.961,"memDeltaMB":4.2474},{"category":"Gallery","operation":"wathen 10×10","size":10,"type":"Float64M","avgMs":9.63,"minMs":4.637,"maxMs":23.436,"stdMs":7.071,"memDeltaMB":7.3074}];
+function get(cat,op,type,size){return R.find(r=>r.category===cat&&r.operation===op&&r.type===type&&r.size===size)?.avgMs??null;}
+function series(cat,ops,type,sizes,pals){
+  return ops.map((op,ci)=>({label:op,data:sizes.map(n=>get(cat,op,type,n)),borderColor:pals[ci]??'#888',backgroundColor:(pals[ci]??'#888')+'33',tension:.3,pointRadius:4,fill:false}));
+}
+function chart(id,labels,datasets,yLabel,log=false){
+  new Chart(document.getElementById(id),{type:"line",data:{labels,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:"bottom",labels:{boxWidth:12,font:{size:11}}}},
+      scales:{y:{type:log?"logarithmic":"linear",title:{display:true,text:yLabel},beginAtZero:!log},
+              x:{title:{display:true,text:"n"}}}}});
+}
+
+const SM=["10×10","25×25","50×50","100×100","200×200"], MED=["10×10","50×50","100×100","200×200","400×400","600×600"];
+const PM=["50×50","100×100","200×200","400×400"];
+
+// 1. Scalabilità mul
+(()=>{
+  const rows=R.filter(r=>r.category==="Scalabilità"&&r.operation==="mul A×B").sort((a,b)=>a.size-b.size);
+  const labels=rows.map(r=>r.size+"×"+r.size);
+  const theory=rows.map(r=>rows[0].avgMs*(r.size/rows[0].size)**3);
+  chart("c_mul_scale",labels,[
+    {label:"Float64M measured",data:rows.map(r=>r.avgMs),borderColor:"#2196F3",backgroundColor:"#2196F322",fill:true,tension:.3,pointRadius:5},
+    {label:"O(n³) teorico",data:theory,borderColor:"#999",borderDash:[5,4],fill:false,pointRadius:0}
+  ],"ms");
+})();
+
+// 2. Aritmetica
+chart("c_aritm",MED,series("Aritmetica",["add","sub","mul","dotMul","dotDiv"],"Float64M",[10,50,100,200,400,600],["#1565C0","#1976D2","#E53935","#1E88E5","#42A5F5"]),"ms",true);
+
+// 3. Unarie
+chart("c_unary",MED,series("Unarie",["abs","negate","sqrt","round","sin","cos"],"Float64M",[10,50,100,200,400,600],["#B71C1C","#C62828","#D32F2F","#E53935","#EF5350","#FF8A80"]),"ms");
+
+// 4. Trasformazioni
+chart("c_transf",MED,series("Trasform.",["transpose","ct","flip ud","flip lr","rot90"],"Float64M",[10,50,100,200,400,600],["#1B5E20","#2E7D32","#388E3C","#43A047","#66BB6A"]),"ms");
+
+// 5. Statistiche
+chart("c_stat",MED,series("Stat.",["sum col","sum row","mean","norm Fro","norm 1","norm Inf","totalSum","trace"],"Float64M",[10,50,100,200,400,600],["#E65100","#EF6C00","#F57C00","#FB8C00","#FFA726","#FFB74D","#FFCC80","#FF8A65"]),"ms");
+
+// 6. Decomposizioni
+chart("c_decomp",SM,series("Decomp.",["LUP","LU","LU total","QR","Cholesky","LDLT"],"Float64M",[10,25,50,100,200],["#2196F3","#4CAF50","#E91E63","#FF9800","#9C27B0","#795548"]),"ms",true);
+
+// 7. Solver tempo
+chart("c_solver_time",SM,series("Solver",["LUP","LU","QR","Cholesky","LDLT","Jacobi","Gauss-Seidel","SOR ω=1.0","SOR ω=1.5","CG (SPD)"],"Float64M",[10,25,50,100,200],["#1565C0","#0D47A1","#1976D2","#4CAF50","#388E3C","#F44336","#C62828","#E65100","#FF9800","#9C27B0"]),"ms",true);
+
+// 8. Solver residuo (scatter)
+(()=>{
+  const solvers=["LUP","LU","QR","Cholesky","LDLT","Jacobi","Gauss-Seidel","SOR ω=1.0","SOR ω=1.5","CG (SPD)"];
+  const pal=["#1565C0","#0D47A1","#1976D2","#4CAF50","#388E3C","#F44336","#C62828","#E65100","#FF9800","#9C27B0"];
+  const datasets=solvers.map((op,ci)=>({
+    label:op,type:"scatter",
+    data:R.filter(r=>r.category==="Solver"&&r.operation===op&&r.type==="Float64M"&&r.residual!==undefined)
+          .map(r=>({x:r.size,y:r.residual})),
+    backgroundColor:pal[ci]??"#888",pointRadius:7,
+  }));
+  new Chart(document.getElementById("c_solver_res"),{type:"scatter",data:{datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:"bottom",labels:{boxWidth:12,font:{size:11}}}},
+      scales:{x:{title:{display:true,text:"n"}},y:{type:"logarithmic",title:{display:true,text:"Residuo relativo"}}}}});
+})();
+
+// 9. SOR omega
+(()=>{
+  const rows=R.filter(r=>r.category==="Iterativi"&&r.operation.startsWith("SOR ω=")&&r.size===50).sort((a,b)=>parseFloat(a.operation.split("=")[1])-parseFloat(b.operation.split("=")[1]));
+  const labels=rows.map(r=>r.operation.split("=")[1]);
+  new Chart(document.getElementById("c_sor"),{type:"line",data:{labels,datasets:[
+    {label:"Residuo",data:rows.map(r=>r.residual??null),borderColor:"#E91E63",yAxisID:"y1",pointRadius:7,fill:false,tension:.2},
+    {label:"Tempo ms",data:rows.map(r=>r.avgMs),borderColor:"#2196F3",yAxisID:"y2",borderDash:[4,3],pointRadius:7,fill:false,tension:.2},
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:"bottom"}},
+    scales:{y1:{type:"logarithmic",title:{display:true,text:"Residuo"},position:"left"},
+            y2:{title:{display:true,text:"ms"},position:"right",grid:{drawOnChartArea:false}}}}});
+})();
+
+// 10. Confronto iterativi vs diretti su stessa matrice
+(()=>{
+  const ops=["Jacobi","Gauss-Seidel","SOR ω=1.0","SOR ω=1.5","CG","Cholesky","LUP"];
+  const row=R.filter(r=>r.category==="Iterativi vs Diretti"&&r.size===50);
+  const pal=["#F44336","#FF9800","#E65100","#FFC107","#4CAF50","#2196F3","#1565C0"];
+  const labels=ops.map(o=>{const r2=row.find(r=>r.operation===o);return r2?o+" ("+r2.avgMs+"ms)":o;});
+  new Chart(document.getElementById("c_iter_cmp"),{type:"bar",data:{
+    labels,
+    datasets:[
+      {label:"Tempo ms",data:ops.map(o=>row.find(r=>r.operation===o)?.avgMs??null),backgroundColor:pal.map(c=>c+"CC")},
+    ]},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{y:{title:{display:true,text:"ms"},type:"logarithmic"},x:{ticks:{font:{size:10}}}}}});
+})();
+
+// 11. Proprietà: separa fast (O(n²)) da slow (O(n³))
+(()=>{
+  const fast=["isSquare","isSymmetric","isUpperTriangular","isLowerTriangular","isDiagonal","isZeroMatrix","isDiagonallyDominant","hasZeroTrace","hasFiniteValues","isStochastic","isPositiveSemiDef"];
+  const slow=["isIdentity","isOrthogonal","isInvertible","isSingular","isPositiveDefinite"];
+  const palF=["#1B5E20","#2E7D32","#388E3C","#43A047","#66BB6A","#81C784","#A5D6A7","#E8F5E9","#558B2F","#33691E","#827717"];
+  const palS=["#B71C1C","#C62828","#D32F2F","#E53935","#EF5350"];
+  chart("c_prop_fast",PM,series("Proprietà",fast,"Float64M",[50,100,200,400],palF),"ms");
+  chart("c_prop_slow",PM,series("Proprietà",slow,"Float64M",[50,100,200,400],palS),"ms",true);
+})();
+
+// 12. Confronto tipi mul
+(()=>{
+  const sizes=[5,10,20,30];
+  const labels=sizes.map(n=>n+"×"+n);
+  new Chart(document.getElementById("c_types_mul"),{type:"bar",data:{labels,datasets:[
+    {label:"Float64M",data:sizes.map(n=>get("Confronto","mul F64","Float64M",n)),backgroundColor:"#2196F3CC"},
+    {label:"Complex", data:sizes.map(n=>get("Confronto","mul Cmx","Complex",n)),backgroundColor:"#E91E63CC"},
+    {label:"Rational",data:sizes.map(n=>get("Confronto","mul Rat","Rational",n)),backgroundColor:"#4CAF50CC"},
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:"bottom"}},
+    scales:{y:{type:"logarithmic",title:{display:true,text:"ms (log)"}},x:{title:{display:true,text:"n"}}}}});
+})();
+
+// 13. Complex solver
+chart("c_complex_solver",[5,10,25,50,100].map(n=>n+"×"+n),
+  series("Solver",["LUP (C)","QR (C)"],"Complex",[5,10,25,50,100],["#E91E63","#880E4F"]),"ms",true);
+
+</script></body></html>

@@ -1,0 +1,11 @@
+{
+  "entries": ["src/wasm/matrix_ops.ts"],
+  "options": {
+    "outFile": "src/wasm/matrix_ops.wasm",
+    "optimizeLevel": 3,
+    "shrinkLevel": 0,
+    "runtime": "stub",
+    "exportRuntime": true,
+    "noAssert": true
+  }
+}
