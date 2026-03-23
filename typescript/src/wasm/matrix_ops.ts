@@ -55,18 +55,31 @@ export function zeroF64(ptr: i32, len: i32): void {
 
 export function addMatrix(aOff: i32, bOff: i32, cOff: i32, len: i32): void {
     let i: i32 = 0;
-    for (; i + 1 < len; i += 2) {
-        const off = i << 3;
-        st2(cOff, off, f64x2.add(ld2(aOff, off), ld2(bOff, off)));
+    // Unrolling: processiamo 4 f64 alla volta (2 registri v128)
+    for (; i + 3 < len; i += 4) {
+        const off0 = i << 3;
+        const off1 = (i + 2) << 3;
+        
+        // Caricamento e calcolo parallelo (potenziale)
+        let v1 = f64x2.add(ld2(aOff, off0), ld2(bOff, off0));
+        let v2 = f64x2.add(ld2(aOff, off1), ld2(bOff, off1));
+        
+        st2(cOff, off0, v1);
+        st2(cOff, off1, v2);
     }
-    if (i < len) st(cOff, i, ld(aOff, i) + ld(bOff, i));
+    // Gestione rimanenti (se len non è multiplo di 4)
+    for (; i < len; i++) {
+        st(cOff, i, ld(aOff, i) + ld(bOff, i));
+    }
 }
 
 export function subMatrix(aOff: i32, bOff: i32, cOff: i32, len: i32): void {
     let i: i32 = 0;
-    for (; i + 1 < len; i += 2) {
+    for (; i + 3 < len; i += 4) {
         const off = i << 3;
+        const off1 = (i + 2) << 3;
         st2(cOff, off, f64x2.sub(ld2(aOff, off), ld2(bOff, off)));
+        st2(cOff, off1, f64x2.sub(ld2(aOff, off1), ld2(bOff, off1)));
     }
     if (i < len) st(cOff, i, ld(aOff, i) - ld(bOff, i));
 }
