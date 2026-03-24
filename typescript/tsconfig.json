@@ -25,5 +25,5 @@
     "noImplicitOverride": false
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist", "dist-cjs"]
+  "exclude": ["node_modules", "dist", "dist-cjs","src/wasm/**/*","src/gpu/**/*"]
 }

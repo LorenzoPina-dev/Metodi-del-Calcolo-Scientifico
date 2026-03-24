@@ -14,11 +14,14 @@ import { equal }     from "./ops/equal";
 import { det }       from "./ops/det";
 import { norm }      from "./ops/norm";
 import { pow }       from "./ops/pow";
+import { LazyMatrix } from "./engine/LazyMatrix.js";
 
 import * as gallery     from "./init/known";
 import * as solver      from "./solver";
 import * as decomp      from "./decomposition";
 import { smartInverse } from "./algoritm/inverse";
+import { mulAsync }          from "./ops/multiply";
+import { solveJacobiAsync }  from "./solver/jacobi";
 
 import { zeros, ones, identity, diag, diagFromArray, zerosLike, identityLike } from "./init/init";
 import { hankel, random, sparse, toeplitz, vander } from "./init";
@@ -87,6 +90,64 @@ export class Matrix<T extends INumeric<T> = Float64M> extends MatrixBase<T> {
     trace(): T                 { return (unaryOps.trace<T>).call(this); }
     totalSum(): T              { return (addOps.totalSum<T>).call(this); }
 
+    // -------- ASYNC (GPU / Worker threads) --------
+    /**
+     * Moltiplicazione matriciale con backend ottimale:
+     *   GPU (WebGPU f32) → Worker threads → WASM → TS
+     * Richiede che `initCompute()` sia stato chiamato all'avvio.
+     * Per matrici piccole (n < 300) ricade automaticamente su `mul()` sincrono.
+     */
+    mulAsync(B: Matrix<T>): Promise<Matrix<T>> {
+        return mulAsync(this, B);
+    }
+
+    /**
+     * Solver iterativo Jacobi con backend ottimale:
+     *   GPU (WebGPU f32, n ≥ 200) → Worker threads (n ≥ 100) → WASM → TS
+     * Richiede che `initCompute()` sia stato chiamato all'avvio.
+     */
+    solveJacobiAsync(b: Matrix<T>, tol = 1e-10, maxIter = 5000): Promise<Matrix<T>> {
+        return solveJacobiAsync(this, b, tol, maxIter);
+    }
+
+    // -------- LAZY (GPU/Workers/WASM via dispatcher) --------
+    lazy(): LazyMatrix<T> { return LazyMatrix.fromMatrix(this); }
+    lazyMul(B: Matrix<T>): LazyMatrix<T> {
+        return LazyMatrix.fromMatrix(this).lazyMul(LazyMatrix.fromMatrix(B));
+    }
+    lazyAdd(B: Matrix<T> | number): LazyMatrix<T> {
+        const lm = LazyMatrix.fromMatrix(this);
+        return typeof B === "number" ? lm.lazyAdd(B) : lm.lazyAdd(LazyMatrix.fromMatrix(B));
+    }
+    lazySub(B: Matrix<T> | number): LazyMatrix<T> {
+        const lm = LazyMatrix.fromMatrix(this);
+        return typeof B === "number" ? lm.lazySub(B) : lm.lazySub(LazyMatrix.fromMatrix(B));
+    }
+    lazyDotMul(B: Matrix<T> | number): LazyMatrix<T> {
+        const lm = LazyMatrix.fromMatrix(this);
+        return typeof B === "number" ? lm.lazyDotMul(B) : lm.lazyDotMul(LazyMatrix.fromMatrix(B));
+    }
+    lazyDotDiv(B: Matrix<T> | number): LazyMatrix<T> {
+        const lm = LazyMatrix.fromMatrix(this);
+        return typeof B === "number" ? lm.lazyDotDiv(B) : lm.lazyDotDiv(LazyMatrix.fromMatrix(B));
+    }
+    lazyT(): LazyMatrix<T> { return LazyMatrix.fromMatrix(this).lazyT(); }
+    lazyNegate(): LazyMatrix<T> { return LazyMatrix.fromMatrix(this).lazyNegate(); }
+    lazyAbs(): LazyMatrix<T> { return LazyMatrix.fromMatrix(this).lazyAbs(); }
+    lazySqrt(): LazyMatrix<T> { return LazyMatrix.fromMatrix(this).lazySqrt(); }
+    lazyExp(): LazyMatrix<T> { return LazyMatrix.fromMatrix(this).lazyExp(); }
+    /** Inversa lazy: A.lazyInv().data() risolve asincronamente. */
+    lazyInv(): LazyMatrix<T> { return LazyMatrix.fromMatrix(this).lazyInv(); }
+    /**
+     * Solver Jacobi lazy: (A).lazySolveJacobi(b).data() risolve Ax=b asincronamente.
+     * Usa GPU → Worker pool → WASM → TS secondo disponibilità.
+     */
+    lazySolveJacobi(b: Matrix<T>, tol = 1e-10, maxIter = 5000): LazyMatrix<T> {
+        return LazyMatrix.fromMatrix(this).lazySolveJacobi(
+            LazyMatrix.fromMatrix(b), tol, maxIter
+        );
+    }
+
     // -------- STATISTICHE --------
     sum(dim: 1 | 2 = 1): Matrix<T>  { return (statOps.sum<T>).call(this, dim); }
     max(dim: 1 | 2 = 1)             { return (statOps.max<T>).call(this, dim); }
@@ -147,6 +208,27 @@ export class Matrix<T extends INumeric<T> = Float64M> extends MatrixBase<T> {
     static readonly gallery = gallery;
     static readonly decomp  = decomp;
     static readonly EPS     = MatrixBase.EPS;
+
+    /**
+     * Inizializza tutti i backend (WASM, Worker threads, GPU).
+     * Alias di `initCompute()` per comodità — chiamare una sola volta all'avvio.
+     * @example
+     *   const caps = await Matrix.initCompute();
+     *   console.log(caps); // { wasm: true, workers: true, gpu: false, numWorkers: 4 }
+     */
+    static async initCompute(options?: { gpu?: boolean; workers?: boolean }) {
+        const { initCompute } = await import("./compute.js");
+        return initCompute(options);
+    }
+
+    /**
+     * Inizializza il Lazy Engine (dispatcher + backend GPU/Workers/WASM).
+     * Chiamare una sola volta all'avvio se si usano le API lazy.
+     */
+    static async initEngine(options?: { gpu?: boolean; workers?: boolean; wasm?: boolean; thresholds?: Partial<import("./engine/types.js").DispatcherThresholds> }) {
+        const { initEngine } = await import("./engine/MatrixEngine.js");
+        return initEngine(options);
+    }
 
     // -------- FACTORY Float64M (default) --------
     static zeros(rows: number, cols: number): Matrix<Float64M> {

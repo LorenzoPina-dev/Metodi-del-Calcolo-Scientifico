@@ -4,20 +4,22 @@
 import { writeFileSync } from "node:fs";
 import { performance }   from "node:perf_hooks";
 import { Matrix, Float64M, Complex, Rational } from "../src/index.js";
-import { solveSOR } from "../src/solver/sor.js";
-import { solveCG }  from "../src/solver/cg.js";
-import { initWasm } from "./wasm";
 
-// All'avvio — una sola volta
-await initWasm();
+// All'avvio — inizializza WASM (GPU e Workers non necessari per questo benchmark sincrono)
+await Matrix.initCompute({ gpu: false, workers: true });
+
+// Alias locali per i solver con omega personalizzato (non esposti come metodo .solve())
+const { solveSOR, solveCG } = Matrix.solver;
 
 // ── CONFIG ───────────────────────────────────────────────────
 const CFG = {
-    warmup:    3,
-    reps:      5,
-    small:     [10, 25, 50, 100, 200],
-    medium:    [10, 50, 100, 200, 400, 600],
-    rationalN: [3, 4, 5, 6],
+    warmup:      3,
+    reps:        5,
+    small:       [10, 25, 50, 100, 200],
+    medium:      [10, 50, 100, 200, 400, 600],
+    large:       [700, 800, 1000, 1200, 1400, 1600],
+    extraLarge:  [2000, 4000, 6000],
+    rationalN:   [3, 4, 5, 6],
 };
 
 interface BenchEntry {
@@ -201,6 +203,7 @@ function benchSolvers() {
     }
 }
 
+
 // ── SEZ 4: SCALABILITÀ mul ───────────────────────────────────
 function benchMulScaling() {
     console.log("\n━━━  4. SCALABILITÀ mul — Float64M  ━━━━━━━━━━━━━━━━━━");
@@ -210,6 +213,107 @@ function benchMulScaling() {
         const gflops=(2*n**3)/(m.avgMs*1e6);
         rec("Scalabilità","mul A×B",n,"Float64M",m);
         console.log(`  n=${n.toString().padStart(4)}  ${m.avgMs.toFixed(2).padStart(8)}ms  ~${gflops.toFixed(3)} GFLOPS`);
+    }
+}
+
+// ── SEZ 4b: LARGE — operazioni principali ────────────────────
+function benchLarge() {
+    console.log("\n━━━  4b. LARGE — operazioni principali  ━━━━━━━━━━━━━━");
+    console.log("  (n = 700, 800, 1000, 1200, 1400, 1600)");
+    for (const n of CFG.large) {
+        const A = Matrix.random(n, n);
+        const B = Matrix.random(n, n);
+
+        // Prodotto matriciale — operazione più critica
+        const mMul = measure(() => A.mul(B), 2);
+        const gflops = (2 * n ** 3) / (mMul.avgMs * 1e6);
+        rec("Large","mul A×B", n, "Float64M", mMul);
+
+        // Operazioni element-wise — O(n²)
+        const mAdd  = measure(() => A.add(B), 3);
+        const mDot  = measure(() => A.dotMul(B), 3);
+        const mTr   = measure(() => A.t(), 3);
+        const mNorm = measure(() => A.norm("Fro"), 3);
+        const mSum  = measure(() => A.totalSum(), 3);
+        rec("Large","add",       n, "Float64M", mAdd);
+        rec("Large","dotMul",    n, "Float64M", mDot);
+        rec("Large","transpose", n, "Float64M", mTr);
+        rec("Large","norm Fro",  n, "Float64M", mNorm);
+        rec("Large","totalSum",  n, "Float64M", mSum);
+
+        console.log(
+            `  n=${n.toString().padStart(4)}` +
+            `  mul=${mMul.avgMs.toFixed(0).padStart(6)}ms (~${gflops.toFixed(3)} GFLOPS)` +
+            `  add=${mAdd.avgMs.toFixed(1).padStart(6)}ms` +
+            `  dotMul=${mDot.avgMs.toFixed(1).padStart(6)}ms` +
+            `  t=${mTr.avgMs.toFixed(1).padStart(6)}ms`
+        );
+    }
+}
+
+// ── SEZ 4c: EXTRA-LARGE — solo operazioni O(n²) + mul ────────
+function benchExtraLarge() {
+    console.log("\n━━━  4c. EXTRA-LARGE — 2000×2000, 4000×4000, 6000×6000  ━━━");
+    console.log("  Nota: mul è O(n³), per n=6000 può richiedere diversi minuti.");
+    console.log("        Le operazioni O(n²) restano rapide anche a queste dimensioni.\n");
+
+    for (const n of CFG.extraLarge) {
+        console.log(`  ── n = ${n} ──────────────────────────────────────`);
+        process.stdout.write("  Allocazione matrici... ");
+        const A = Matrix.random(n, n);
+        const B = Matrix.random(n, n);
+        console.log("OK");
+
+        // ── Operazioni O(n²) — veloci anche a 6000 ──
+        const mAdd  = measure(() => A.add(B), 3);
+        const mSub  = measure(() => A.sub(B), 3);
+        const mDot  = measure(() => A.dotMul(B), 3);
+        const mTr   = measure(() => A.t(), 3);
+        const mNorm = measure(() => A.norm("Fro"), 3);
+        const mSum  = measure(() => A.totalSum(), 3);
+        const mMax  = measure(() => A.max(1), 3);
+        const mMean = measure(() => A.mean(1), 3);
+        const mAbs  = measure(() => A.abs(), 3);
+        const mNeg  = measure(() => A.negate(), 3);
+        const mSca  = measure(() => A.mul(2.718), 3);
+
+        rec("ExtraLarge","add",        n,"Float64M",mAdd);
+        rec("ExtraLarge","sub",        n,"Float64M",mSub);
+        rec("ExtraLarge","dotMul",     n,"Float64M",mDot);
+        rec("ExtraLarge","transpose",  n,"Float64M",mTr);
+        rec("ExtraLarge","norm Fro",   n,"Float64M",mNorm);
+        rec("ExtraLarge","totalSum",   n,"Float64M",mSum);
+        rec("ExtraLarge","max col",    n,"Float64M",mMax);
+        rec("ExtraLarge","mean col",   n,"Float64M",mMean);
+        rec("ExtraLarge","abs",        n,"Float64M",mAbs);
+        rec("ExtraLarge","negate",     n,"Float64M",mNeg);
+        rec("ExtraLarge","mul scalar", n,"Float64M",mSca);
+
+        console.log(
+            `    O(n²)  add=${mAdd.avgMs.toFixed(1).padStart(7)}ms` +
+            `  dotMul=${mDot.avgMs.toFixed(1).padStart(7)}ms` +
+            `  t=${mTr.avgMs.toFixed(1).padStart(7)}ms` +
+            `  norm=${mNorm.avgMs.toFixed(1).padStart(7)}ms`
+        );
+        console.log(
+            `           abs=${mAbs.avgMs.toFixed(1).padStart(7)}ms` +
+            `  negate=${mNeg.avgMs.toFixed(1).padStart(7)}ms` +
+            `  scalar=${mSca.avgMs.toFixed(1).padStart(7)}ms` +
+            `  sum=${mSum.avgMs.toFixed(1).padStart(7)}ms`
+        );
+
+        // ── Prodotto matriciale O(n³) — con avviso per n grandi ──
+        const warnMs = n >= 4000 ? " ⏳ potrebbe richiedere tempo..." : "";
+        process.stdout.write(`    mul A×B O(n³)${warnMs} `);
+        // Riduce le ripetizioni per evitare attese eccessive sulle xl
+        const repsXL = n <= 2000 ? 2 : 1;
+        const mMul = measure(() => A.mul(B), repsXL);
+        const gflops = (2 * n ** 3) / (mMul.avgMs * 1e6);
+        rec("ExtraLarge","mul A×B", n,"Float64M",mMul);
+        console.log(`→ ${mMul.avgMs.toFixed(0)}ms  (~${gflops.toFixed(3)} GFLOPS)`);
+
+        gc(); // libera memoria tra le iterazioni
+        console.log();
     }
 }
 
@@ -417,12 +521,15 @@ function saveHTML() {
         }).join(",");
     }
 
-    const SMALL_LABELS = JSON.stringify(CFG.small.map(n=>n+"×"+n));
+    const SMALL_LABELS  = JSON.stringify(CFG.small.map(n=>n+"×"+n));
     const MEDIUM_LABELS = JSON.stringify(CFG.medium.map(n=>n+"×"+n));
+    const LARGE_LABELS  = JSON.stringify(CFG.large.map(n=>n+"×"+n));
+    const XL_LABELS     = JSON.stringify(CFG.extraLarge.map(n=>n+"×"+n));
     const PAL_DECOMP = ["#2196F3","#4CAF50","#E91E63","#FF9800","#9C27B0","#795548","#00BCD4","#F44336"];
     const PAL_SOLVER = ["#1565C0","#0D47A1","#1976D2","#4CAF50","#388E3C","#F44336","#C62828","#E65100","#FF9800","#9C27B0"];
     const PAL_OPS    = ["#1565C0","#1976D2","#42A5F5","#64B5F6","#0097A7","#00838F"];
     const PAL_PROPS  = ["#1B5E20","#2E7D32","#388E3C","#43A047","#66BB6A","#81C784","#A5D6A7","#C8E6C9","#B71C1C","#C62828","#D32F2F","#E53935","#EF9A9A","#4A148C","#6A1B9A","#7B1FA2"];
+    const PAL_LARGE  = ["#E53935","#FB8C00","#43A047","#1E88E5","#8E24AA","#00ACC1"];
 
     // ── tabelle HTML ──
     const solverRows = results.filter(r=>r.category==="Solver")
@@ -438,6 +545,13 @@ function saveHTML() {
         .sort((a,b)=>a.size-b.size||a.operation.localeCompare(b.operation))
         .map(r=>`<tr><td>${r.operation}</td><td>${r.size}</td><td>${r.avgMs}</td><td>${r.minMs}</td><td>${r.stdMs}</td></tr>`).join("\n");
 
+    const largeRows = results.filter(r=>r.category==="Large"||r.category==="ExtraLarge")
+        .sort((a,b)=>a.size-b.size||a.operation.localeCompare(b.operation))
+        .map(r=>{
+            const gflops = r.operation==="mul A×B" ? ((2*r.size**3)/(r.avgMs*1e6)).toFixed(3) : "—";
+            return `<tr><td><span class="badge ${r.category==="ExtraLarge"?"badge-xl":"badge-lg"}">${r.category}</span></td><td>${r.operation}</td><td>${r.size}</td><td>${r.avgMs}</td><td>${r.minMs}</td><td>${r.stdMs}</td><td>${r.memDeltaMB}</td><td>${gflops}</td></tr>`;
+        }).join("\n");
+
     const allRows = [...results].sort((a,b)=>a.category.localeCompare(b.category)||a.size-b.size)
         .map(r=>{
             const bc=r.type==="Float64M"?"badge-f":r.type==="Complex"?"badge-c":"badge-r";
@@ -452,6 +566,8 @@ function saveHTML() {
     const PROP_OPS   = ["isSquare","isSymmetric","isUpperTriangular","isLowerTriangular","isDiagonal","isIdentity","isOrthogonal","isZeroMatrix","isInvertible","isSingular","isPositiveDefinite","isPositiveSemiDef","isDiagonallyDominant","hasZeroTrace","hasFiniteValues","isStochastic"];
     const DECOMP_OPS = ["LUP","LU","LU total","QR","Cholesky","LDLT"];
     const SOLVER_OPS = ["LUP","LU","QR","Cholesky","LDLT","Jacobi","Gauss-Seidel","SOR ω=1.0","SOR ω=1.5","CG (SPD)"];
+    const LARGE_OPS  = ["mul A×B","add","dotMul","transpose","norm Fro","totalSum"];
+    const XL_OPS     = ["mul A×B","add","dotMul","transpose","norm Fro","abs","negate","mul scalar","totalSum","max col","mean col"];
 
     const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
 <title>numeric-matrix — Benchmark Report</title>
@@ -472,6 +588,7 @@ h2{font-size:.95rem;font-weight:600;color:#1565C0;margin-bottom:12px;border-bott
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
 .chart-wrap{position:relative;height:300px}
 .chart-wrap-tall{position:relative;height:380px}
+.chart-wrap-xl{position:relative;height:340px}
 table{width:100%;border-collapse:collapse;font-size:.76rem}
 th{background:#E3F2FD;color:#0D47A1;padding:5px 8px;text-align:left;border-bottom:2px solid #90CAF9;white-space:nowrap}
 td{padding:3px 8px;border-bottom:1px solid #eee}
@@ -479,21 +596,25 @@ tr:hover td{background:#F8FBFF}
 .ok{color:#2E7D32;font-weight:600}.warn{color:#E65100;font-weight:600}.err{color:#C62828;font-weight:600}
 .badge{display:inline-block;padding:1px 6px;border-radius:10px;font-size:.7rem;font-weight:600}
 .badge-f{background:#BBDEFB;color:#0D47A1}.badge-c{background:#FCE4EC;color:#880E4F}.badge-r{background:#E8F5E9;color:#1B5E20}
+.badge-lg{background:#FFF3E0;color:#E65100}.badge-xl{background:#FCE4EC;color:#880E4F}
 .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
 .card{background:#E3F2FD;border-radius:6px;padding:10px 14px}
 .card .val{font-size:1.4rem;font-weight:700;color:#0D47A1}
 .card .lbl{font-size:.68rem;color:#546E7A;margin-top:2px}
 .note{background:#FFF3E0;border-left:3px solid #FF9800;padding:8px 12px;margin-bottom:12px;font-size:.8rem;border-radius:3px}
+.note-xl{background:#FCE4EC;border-left:3px solid #E91E63;padding:8px 12px;margin-bottom:12px;font-size:.8rem;border-radius:3px}
 </style></head><body>
 <header>
   <h1>numeric-matrix — Benchmark Report Completo</h1>
-  <p>Float64M · Complex · Rational · ${new Date().toLocaleString("it-IT")} · Node ${process.version}</p>
+  <p>Float64M · Complex · Rational · Large (700→1600) · ExtraLarge (2000/4000/6000) · ${new Date().toLocaleString("it-IT")} · Node ${process.version}</p>
 </header>
 <main>
 
 <nav>
   <a href="#summary">Riepilogo</a>
   <a href="#scalabilita">Scalabilità mul</a>
+  <a href="#large">Large (700→1600)</a>
+  <a href="#extralarge">ExtraLarge (2k/4k/6k)</a>
   <a href="#aritmetica">Aritmetica</a>
   <a href="#unarie">Unarie</a>
   <a href="#trasformazioni">Trasformazioni</a>
@@ -523,27 +644,72 @@ tr:hover td{background:#F8FBFF}
   <div class="chart-wrap-tall"><canvas id="c_mul_scale"></canvas></div>
 </section>
 
-<div class="grid2" id="aritmetica">
-<section>
-  <h2>Aritmetica element-wise — scalabilità</h2>
+<!-- ══ LARGE ══════════════════════════════════════════════════════ -->
+<section id="large">
+  <h2>Large (n = 700→1600) — tutte le operazioni</h2>
+  <div class="note">Operazioni O(n²) (add, dotMul, transpose, norm) rimangono veloci. Il prodotto matriciale O(n³) domina il tempo totale.</div>
+  <div class="grid2">
+    <div>
+      <p style="font-size:.8rem;color:#555;margin-bottom:8px">Prodotto matriciale — Large</p>
+      <div class="chart-wrap"><canvas id="c_large_mul"></canvas></div>
+    </div>
+    <div>
+      <p style="font-size:.8rem;color:#555;margin-bottom:8px">Operazioni O(n²) — Large</p>
+      <div class="chart-wrap"><canvas id="c_large_ops"></canvas></div>
+    </div>
+  </div>
+  <div style="margin-top:16px">
+    <p style="font-size:.8rem;color:#555;margin-bottom:8px">GFLOPS stimati (mul A×B) — Large</p>
+    <div class="chart-wrap"><canvas id="c_large_gflops"></canvas></div>
+  </div>
+</section>
+
+<!-- ══ EXTRA-LARGE ════════════════════════════════════════════════ -->
+<section id="extralarge">
+  <h2>ExtraLarge (n = 2000, 4000, 6000) — analisi granularità estrema</h2>
+  <div class="note-xl">Il prodotto matriciale O(n³) scala cubicamente: n=6000 impiega ~216× più di n=1000. Le operazioni O(n²) rimangono proporzionali all'area della matrice.</div>
+  <div class="grid2">
+    <div>
+      <p style="font-size:.8rem;color:#555;margin-bottom:8px">Prodotto matriciale — ExtraLarge (scala log)</p>
+      <div class="chart-wrap-xl"><canvas id="c_xl_mul"></canvas></div>
+    </div>
+    <div>
+      <p style="font-size:.8rem;color:#555;margin-bottom:8px">Operazioni O(n²) — ExtraLarge</p>
+      <div class="chart-wrap-xl"><canvas id="c_xl_ops"></canvas></div>
+    </div>
+  </div>
+  <div class="grid2" style="margin-top:16px">
+    <div>
+      <p style="font-size:.8rem;color:#555;margin-bottom:8px">GFLOPS stimati — confronto Small/Medium/Large/ExtraLarge</p>
+      <div class="chart-wrap-xl"><canvas id="c_all_gflops"></canvas></div>
+    </div>
+    <div>
+      <p style="font-size:.8rem;color:#555;margin-bottom:8px">Rapporto O(n³)/O(n²) — quanto domina il prodotto su add/dotMul</p>
+      <div class="chart-wrap-xl"><canvas id="c_xl_ratio"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<section id="aritmetica">
+  <h2>Aritmetica element-wise — scalabilità (medium)</h2>
   <div class="chart-wrap"><canvas id="c_aritm"></canvas></div>
 </section>
+
+<div class="grid2">
 <section id="unarie">
   <h2>Funzioni unarie — scalabilità</h2>
   <div class="chart-wrap"><canvas id="c_unary"></canvas></div>
 </section>
-</div>
-
-<div class="grid2" id="trasformazioni">
-<section>
+<section id="trasformazioni">
   <h2>Trasformazioni — scalabilità</h2>
   <div class="chart-wrap"><canvas id="c_transf"></canvas></div>
 </section>
+</div>
+
 <section id="statistiche">
   <h2>Statistiche e norme — scalabilità</h2>
   <div class="chart-wrap"><canvas id="c_stat"></canvas></div>
 </section>
-</div>
 
 <section id="decomposizioni">
   <h2>Decomposizioni — confronto metodi</h2>
@@ -590,7 +756,14 @@ tr:hover td{background:#F8FBFF}
   </div>
 </section>
 
+<!-- ══ TABELLE ════════════════════════════════════════════════════ -->
 <section id="tabelle">
+  <h2>Large &amp; ExtraLarge — dettaglio misurazioni</h2>
+  <table><thead><tr><th>Categoria</th><th>Operazione</th><th>n</th><th>Avg ms</th><th>Min ms</th><th>σ ms</th><th>Mem MB</th><th>GFLOPS</th></tr></thead>
+  <tbody>${largeRows}</tbody></table>
+</section>
+
+<section>
   <h2>Solver — dettaglio residui</h2>
   <table><thead><tr><th>Metodo</th><th>Tipo</th><th>n</th><th>Avg ms</th><th>σ ms</th><th>Residuo</th></tr></thead>
   <tbody>${solverRows}</tbody></table>
@@ -611,6 +784,8 @@ tr:hover td{background:#F8FBFF}
 </main>
 <script>
 const R=${JSON.stringify(results)};
+const CFG_LARGE=${JSON.stringify(CFG.large)};
+const CFG_XL=${JSON.stringify(CFG.extraLarge)};
 function get(cat,op,type,size){return R.find(r=>r.category===cat&&r.operation===op&&r.type===type&&r.size===size)?.avgMs??null;}
 function series(cat,ops,type,sizes,pals){
   return ops.map((op,ci)=>({label:op,data:sizes.map(n=>get(cat,op,type,n)),borderColor:pals[ci]??'#888',backgroundColor:(pals[ci]??'#888')+'33',tension:.3,pointRadius:4,fill:false}));
@@ -624,11 +799,16 @@ function chart(id,labels,datasets,yLabel,log=false){
 }
 
 const SM=${SMALL_LABELS}, MED=${MEDIUM_LABELS};
+const LG=${LARGE_LABELS}, XL=${XL_LABELS};
 const PM=${JSON.stringify([50,100,200,400].map(n=>n+"×"+n))};
 
-// 1. Scalabilità mul
+// ── 1. Scalabilità mul (small + medium + inizio large) ──
 (()=>{
-  const rows=R.filter(r=>r.category==="Scalabilità"&&r.operation==="mul A×B").sort((a,b)=>a.size-b.size);
+  // Unifica tutte le misurazioni di "mul A×B" in ordine crescente di size
+  const rows=[
+    ...R.filter(r=>r.category==="Scalabilità"&&r.operation==="mul A×B"),
+    ...R.filter(r=>r.category==="Large"&&r.operation==="mul A×B"),
+  ].sort((a,b)=>a.size-b.size);
   const labels=rows.map(r=>r.size+"×"+r.size);
   const theory=rows.map(r=>rows[0].avgMs*(r.size/rows[0].size)**3);
   chart("c_mul_scale",labels,[
@@ -637,25 +817,92 @@ const PM=${JSON.stringify([50,100,200,400].map(n=>n+"×"+n))};
   ],"ms");
 })();
 
-// 2. Aritmetica
+// ── 2. Large — mul ──
+(()=>{
+  const rows=R.filter(r=>r.category==="Large"&&r.operation==="mul A×B").sort((a,b)=>a.size-b.size);
+  chart("c_large_mul",rows.map(r=>r.size+"×"+r.size),[
+    {label:"mul A×B",data:rows.map(r=>r.avgMs),borderColor:"#E53935",backgroundColor:"#E5393522",fill:true,tension:.3,pointRadius:6}
+  ],"ms");
+})();
+
+// ── 3. Large — ops O(n²) ──
+(()=>{
+  const ops=["add","dotMul","transpose","norm Fro","totalSum"];
+  const pal=["#1E88E5","#43A047","#8E24AA","#FB8C00","#00ACC1"];
+  chart("c_large_ops",LG,series("Large",ops,"Float64M",CFG_LARGE,pal),"ms");
+})();
+
+// ── 4. Large — GFLOPS ──
+(()=>{
+  const rows=R.filter(r=>r.category==="Large"&&r.operation==="mul A×B").sort((a,b)=>a.size-b.size);
+  new Chart(document.getElementById("c_large_gflops"),{type:"bar",data:{
+    labels:rows.map(r=>r.size+"×"+r.size),
+    datasets:[{label:"GFLOPS stimati",data:rows.map(r=>+(2*r.size**3/(r.avgMs*1e6)).toFixed(3)),backgroundColor:"#1E88E5CC"}]
+  },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{title:{display:true,text:"GFLOPS"}}}}});
+})();
+
+// ── 5. ExtraLarge — mul (log) ──
+(()=>{
+  const rows=R.filter(r=>r.category==="ExtraLarge"&&r.operation==="mul A×B").sort((a,b)=>a.size-b.size);
+  chart("c_xl_mul",rows.map(r=>r.size+"×"+r.size),[
+    {label:"mul A×B",data:rows.map(r=>r.avgMs),borderColor:"#E91E63",backgroundColor:"#E91E6322",fill:true,tension:.2,pointRadius:8}
+  ],"ms (log)",true);
+})();
+
+// ── 6. ExtraLarge — ops O(n²) ──
+(()=>{
+  const ops=["add","dotMul","transpose","norm Fro","abs","negate","mul scalar"];
+  const pal=["#1E88E5","#43A047","#8E24AA","#FB8C00","#E53935","#00ACC1","#F06292"];
+  chart("c_xl_ops",XL,series("ExtraLarge",ops,"Float64M",CFG_XL,pal),"ms");
+})();
+
+// ── 7. GFLOPS — tutte le taglie ──
+(()=>{
+  const all=[
+    ...R.filter(r=>r.category==="Scalabilità"&&r.operation==="mul A×B"),
+    ...R.filter(r=>r.category==="Large"&&r.operation==="mul A×B"),
+    ...R.filter(r=>r.category==="ExtraLarge"&&r.operation==="mul A×B"),
+  ].sort((a,b)=>a.size-b.size);
+  new Chart(document.getElementById("c_all_gflops"),{type:"line",data:{
+    labels:all.map(r=>r.size+"×"+r.size),
+    datasets:[{label:"GFLOPS",data:all.map(r=>+(2*r.size**3/(r.avgMs*1e6)).toFixed(4)),
+      borderColor:"#1565C0",backgroundColor:"#1565C033",fill:true,tension:.3,pointRadius:5}]
+  },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{title:{display:true,text:"GFLOPS"}},x:{title:{display:true,text:"n"},ticks:{maxRotation:45}}}}});
+})();
+
+// ── 8. Rapporto mul/add — ExtraLarge ──
+(()=>{
+  const sizes=CFG_XL;
+  const ratioData=sizes.map(n=>{
+    const mul=R.find(r=>r.category==="ExtraLarge"&&r.operation==="mul A×B"&&r.size===n)?.avgMs;
+    const add=R.find(r=>r.category==="ExtraLarge"&&r.operation==="add"&&r.size===n)?.avgMs;
+    return (mul&&add)?+(mul/add).toFixed(1):null;
+  });
+  new Chart(document.getElementById("c_xl_ratio"),{type:"bar",data:{
+    labels:sizes.map(n=>n+"×"+n),
+    datasets:[{label:"mul / add (rapporto tempi)",data:ratioData,backgroundColor:"#E91E63CC"}]
+  },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>"×"+c.parsed.y+" volte più lento di add"}}},scales:{y:{title:{display:true,text:"rapporto"}},x:{title:{display:true,text:"n"}}}}});
+})();
+
+// ── 9. Aritmetica ──
 chart("c_aritm",MED,series("Aritmetica",["add","sub","mul","dotMul","dotDiv"],"Float64M",${JSON.stringify(CFG.medium)},["#1565C0","#1976D2","#E53935","#1E88E5","#42A5F5"]),"ms",true);
 
-// 3. Unarie
+// ── 10. Unarie ──
 chart("c_unary",MED,series("Unarie",["abs","negate","sqrt","round","sin","cos"],"Float64M",${JSON.stringify(CFG.medium)},["#B71C1C","#C62828","#D32F2F","#E53935","#EF5350","#FF8A80"]),"ms");
 
-// 4. Trasformazioni
+// ── 11. Trasformazioni ──
 chart("c_transf",MED,series("Trasform.",["transpose","ct","flip ud","flip lr","rot90"],"Float64M",${JSON.stringify(CFG.medium)},["#1B5E20","#2E7D32","#388E3C","#43A047","#66BB6A"]),"ms");
 
-// 5. Statistiche
+// ── 12. Statistiche ──
 chart("c_stat",MED,series("Stat.",["sum col","sum row","mean","norm Fro","norm 1","norm Inf","totalSum","trace"],"Float64M",${JSON.stringify(CFG.medium)},["#E65100","#EF6C00","#F57C00","#FB8C00","#FFA726","#FFB74D","#FFCC80","#FF8A65"]),"ms");
 
-// 6. Decomposizioni
+// ── 13. Decomposizioni ──
 chart("c_decomp",SM,series("Decomp.",["LUP","LU","LU total","QR","Cholesky","LDLT"],"Float64M",${JSON.stringify(CFG.small)},${JSON.stringify(PAL_DECOMP.slice(0,6))}),"ms",true);
 
-// 7. Solver tempo
+// ── 14. Solver tempo ──
 chart("c_solver_time",SM,series("Solver",["LUP","LU","QR","Cholesky","LDLT","Jacobi","Gauss-Seidel","SOR ω=1.0","SOR ω=1.5","CG (SPD)"],"Float64M",${JSON.stringify(CFG.small)},${JSON.stringify(PAL_SOLVER)}),"ms",true);
 
-// 8. Solver residuo (scatter)
+// ── 15. Solver residuo (scatter) ──
 (()=>{
   const solvers=["LUP","LU","QR","Cholesky","LDLT","Jacobi","Gauss-Seidel","SOR ω=1.0","SOR ω=1.5","CG (SPD)"];
   const pal=${JSON.stringify(PAL_SOLVER)};
@@ -671,7 +918,7 @@ chart("c_solver_time",SM,series("Solver",["LUP","LU","QR","Cholesky","LDLT","Jac
       scales:{x:{title:{display:true,text:"n"}},y:{type:"logarithmic",title:{display:true,text:"Residuo relativo"}}}}});
 })();
 
-// 9. SOR omega
+// ── 16. SOR omega ──
 (()=>{
   const rows=R.filter(r=>r.category==="Iterativi"&&r.operation.startsWith("SOR ω=")&&r.size===50).sort((a,b)=>parseFloat(a.operation.split("=")[1])-parseFloat(b.operation.split("=")[1]));
   const labels=rows.map(r=>r.operation.split("=")[1]);
@@ -684,7 +931,7 @@ chart("c_solver_time",SM,series("Solver",["LUP","LU","QR","Cholesky","LDLT","Jac
             y2:{title:{display:true,text:"ms"},position:"right",grid:{drawOnChartArea:false}}}}});
 })();
 
-// 10. Confronto iterativi vs diretti su stessa matrice
+// ── 17. Confronto iterativi vs diretti ──
 (()=>{
   const ops=["Jacobi","Gauss-Seidel","SOR ω=1.0","SOR ω=1.5","CG","Cholesky","LUP"];
   const row=R.filter(r=>r.category==="Iterativi vs Diretti"&&r.size===50);
@@ -692,14 +939,12 @@ chart("c_solver_time",SM,series("Solver",["LUP","LU","QR","Cholesky","LDLT","Jac
   const labels=ops.map(o=>{const r2=row.find(r=>r.operation===o);return r2?o+" ("+r2.avgMs+"ms)":o;});
   new Chart(document.getElementById("c_iter_cmp"),{type:"bar",data:{
     labels,
-    datasets:[
-      {label:"Tempo ms",data:ops.map(o=>row.find(r=>r.operation===o)?.avgMs??null),backgroundColor:pal.map(c=>c+"CC")},
-    ]},options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{y:{title:{display:true,text:"ms"},type:"logarithmic"},x:{ticks:{font:{size:10}}}}}});
+    datasets:[{label:"Tempo ms",data:ops.map(o=>row.find(r=>r.operation===o)?.avgMs??null),backgroundColor:pal.map(c=>c+"CC")}]
+  },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{y:{title:{display:true,text:"ms"},type:"logarithmic"},x:{ticks:{font:{size:10}}}}}});
 })();
 
-// 11. Proprietà: separa fast (O(n²)) da slow (O(n³))
+// ── 18. Proprietà ──
 (()=>{
   const fast=["isSquare","isSymmetric","isUpperTriangular","isLowerTriangular","isDiagonal","isZeroMatrix","isDiagonallyDominant","hasZeroTrace","hasFiniteValues","isStochastic","isPositiveSemiDef"];
   const slow=["isIdentity","isOrthogonal","isInvertible","isSingular","isPositiveDefinite"];
@@ -709,7 +954,7 @@ chart("c_solver_time",SM,series("Solver",["LUP","LU","QR","Cholesky","LDLT","Jac
   chart("c_prop_slow",PM,series("Proprietà",slow,"Float64M",[50,100,200,400],palS),"ms",true);
 })();
 
-// 12. Confronto tipi mul
+// ── 19. Confronto tipi mul ──
 (()=>{
   const sizes=[5,10,20,30];
   const labels=sizes.map(n=>n+"×"+n);
@@ -717,12 +962,11 @@ chart("c_solver_time",SM,series("Solver",["LUP","LU","QR","Cholesky","LDLT","Jac
     {label:"Float64M",data:sizes.map(n=>get("Confronto","mul F64","Float64M",n)),backgroundColor:"#2196F3CC"},
     {label:"Complex", data:sizes.map(n=>get("Confronto","mul Cmx","Complex",n)),backgroundColor:"#E91E63CC"},
     {label:"Rational",data:sizes.map(n=>get("Confronto","mul Rat","Rational",n)),backgroundColor:"#4CAF50CC"},
-  ]},options:{responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{position:"bottom"}},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"}},
     scales:{y:{type:"logarithmic",title:{display:true,text:"ms (log)"}},x:{title:{display:true,text:"n"}}}}});
 })();
 
-// 13. Complex solver
+// ── 20. Complex solver ──
 chart("c_complex_solver",[5,10,25,50,100].map(n=>n+"×"+n),
   series("Solver",["LUP (C)","QR (C)"],"Complex",[5,10,25,50,100],["#E91E63","#880E4F"]),"ms",true);
 
@@ -743,6 +987,8 @@ async function main() {
     benchDecompositions();
     benchSolvers();
     benchMulScaling();
+    benchLarge();
+    //benchExtraLarge();
     benchIterativeConvergence();
     benchProperties();
     benchComplex();
@@ -751,7 +997,6 @@ async function main() {
     benchGallery();
 
     console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    const r3=(x:number,d=3)=>Math.round(x*10**d)/10**d;
     writeFileSync("benchmark/benchmark_results.json",
         JSON.stringify({meta:{date:new Date().toISOString(),node:process.version},results},null,2));
     console.log("  ✓ benchmark/benchmark_results.json");

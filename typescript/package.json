@@ -24,7 +24,6 @@
   "scripts": {
     "build:wasm": "asc src/wasm/matrix_ops.ts --outFile src/wasm/matrix_ops.wasm --optimizeLevel 3 --shrinkLevel 0 --runtime stub --noAssert --enable simd",
     "build:wasm:nosimd": "asc src/wasm/matrix_ops.ts --outFile src/wasm/matrix_ops.wasm --optimizeLevel 3 --shrinkLevel 0 --runtime stub --noAssert",
-    "build:worker": "npx tsx --tsconfig tsconfig.json src/parallel/matrix_worker.ts 2>/dev/null || true",
     "build:esm": "tsc --project tsconfig.esm.json",
     "build:cjs": "tsc --project tsconfig.cjs.json",
     "build:types": "tsc --project tsconfig.types.json",

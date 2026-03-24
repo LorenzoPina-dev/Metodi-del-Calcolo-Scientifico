@@ -1,4 +1,4 @@
-// Bootstrap: registers tsx and loads the TS worker module.
+// Bootstrap: registers tsx and loads the TS matrix worker module.
 import { register } from "tsx/esm/api";
 
 register();
