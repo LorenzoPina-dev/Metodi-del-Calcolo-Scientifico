@@ -8,17 +8,19 @@
 //     3. Path generico (Complex, Rational)            → correttezza
 //
 //   mulAsync() — async, massimo throughput:
-//     1. GPU  (WebGPU f32, n² ≥ GPU_THRESHOLD.MATMUL)  → ~10-50× WASM
-//     2. Workers (pool, n² ≥ PARALLEL_THRESHOLD.MATMUL) → ~N× WASM
-//     3. WASM → TS                                       → fallback
+//     1. GPU  (WebGPU f32, n² ≥ GPU_THRESHOLD.MATMUL)   → ~10-50× WASM
+//     2. WasmWorkerPool con soglia interna:
+//          M*N  < 500*500  → WASM single-thread (matmul SIMD+tiling)
+//          M*N >= 500*500  → WASM workers paralleli (matmulChunk distribuito)
+//     3. WASM → TS                                        → fallback
 //
-// NOTA: il pool viene riutilizzato tra chiamate (non viene spento dopo mulAsync).
-// Chiamare WorkerPool.instance.shutdown() solo all'uscita del processo.
+// NOTA: WasmWorkerPool.instance viene inizializzato da initCompute().
+//       Non creare nuove istanze per ogni chiamata (overhead ~200ms).
 //
 import type { Matrix }    from "../Matrix.js";
 import type { INumeric }  from "../type/index.js";
 import { getBridgeSync, WASM_THRESHOLD } from "../wasm/wasm_bridge.js";
-import {  WorkerPool } from "../parallel/worker_pool.js";
+import { WasmWorkerPool } from "../parallel/wasm_worker_pool.js";
 import { isGPUAvailable, gpuMatmul, GPU_THRESHOLD } from "../gpu/webgpu_backend.js";
 
 // ─── mul() sincrono ───────────────────────────────────────────────────────────
@@ -87,7 +89,7 @@ export function multiply<T extends INumeric<T>>(
     return _matMulGeneric(this, B);
 }
 
-// ─── mulAsync() — GPU → Workers → WASM → TS ──────────────────────────────────
+// ─── mulAsync() — GPU → WasmWorkerPool → WASM ST → TS ────────────────────────
 export async function mulAsync<T extends INumeric<T>>(
     A: Matrix<T>,
     B: Matrix<T>
@@ -108,21 +110,25 @@ export async function mulAsync<T extends INumeric<T>>(
             const cFlat = await gpuMatmul(aFlat, bFlat, M, K, N);
             return _fromF64Flat(A, M, N, cFlat);
         } catch (e) {
-            console.warn("[GPU] matmul fallback a Workers:", (e as Error).message);
+            console.warn("[GPU] matmul fallback a WasmWorkerPool:", (e as Error).message);
         }
     }
 
-    // 2. Worker pool asincrono (pool persistente — NON spento dopo ogni op)
-    if (M * K >= 500_000) {
-        const pool = new WorkerPool();
-        await pool.init();
-        const cFlat = new Float64Array(M * N);
-        await pool.matmul(aFlat, bFlat, M, K, N);
-        return _fromF64Flat(A, M, N, cFlat);
+    // 2. WasmWorkerPool (soglia interna 500×500):
+    //    • M*N  < 250 000 → WASM single-thread
+    //    • M*N >= 250 000 → WASM workers paralleli
+    const pool = WasmWorkerPool.instance;
+    if (pool && M * K >= WASM_THRESHOLD.MATMUL) {
+        try {
+            const cFlat = await pool.matmul(aFlat, bFlat, M, K, N);
+            return _fromF64Flat(A, M, N, cFlat);
+        } catch (e) {
+            console.warn("[WasmWorkerPool] matmul fallback WASM ST:", (e as Error).message);
+        }
     }
 
     // 3. Sincrono (WASM → TS)
-    return A.mul(B);
+    return _matMulF64(A, B as any) as any;
 }
 
 // ─── Helpers pubblici ─────────────────────────────────────────────────────────
@@ -147,7 +153,6 @@ function _matMulF64<T extends INumeric<T>>(A: Matrix<T>, B: Matrix<T>): Matrix<T
     const af = A.data, bf = B.data;
     const cf = new Float64Array(M * N);
 
-    // Trasponi B per accesso riga-riga (L1-friendly)
     const BT = new Float64Array(K * N);
     for (let k = 0; k < K; k++) {
         const kN = k * N;

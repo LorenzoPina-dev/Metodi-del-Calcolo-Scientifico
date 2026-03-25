@@ -9,16 +9,15 @@
 //
 //   solveJacobiAsync() — async, massimo throughput:
 //     1. GPU  (WebGPU f32, n² ≥ GPU_THRESHOLD.JACOBI)
-//     2. Workers (pool, n² ≥ PARALLEL_THRESHOLD.JACOBI)
-//     3. WASM → TS                                     → fallback
-//
-// NOTA: il WorkerPool NON viene spento dopo ogni chiamata (overhead di ~200ms).
-// Viene riutilizzato tramite il singleton WorkerPool.instance.
+//     2. WasmWorkerPool con soglia interna (500×500):
+//          n² < 250 000  → WASM single-thread (jacobiSolve SIMD, zero GC)
+//          n² >= 250 000 → TS workers paralleli (SAB zero-copy)
+//     3. WASM → TS sincrono                            → fallback
 //
 import type { Matrix }          from "../Matrix.js";
 import type { Float64M, INumeric } from "../type/index.js";
 import { getBridgeSync, WASM_THRESHOLD } from "../wasm/wasm_bridge.js";
-import { WorkerPool } from "../parallel/worker_pool.js";
+import { WasmWorkerPool } from "../parallel/wasm_worker_pool.js";
 import { isGPUAvailable, gpuJacobi, GPU_THRESHOLD } from "../gpu/webgpu_backend.js";
 import { _hasConverged } from "./_hasConverged.js";
 
@@ -54,7 +53,7 @@ export function solveJacobiMat<T extends INumeric<T>>(
     return _jacobiGeneric(A, b, tol, maxIter);
 }
 
-// ─── solveJacobiAsync — GPU → Workers → fallback ─────────────────────────────
+// ─── solveJacobiAsync — GPU → WasmWorkerPool → fallback ─────────────────────
 export async function solveJacobiAsync<T extends INumeric<T>>(
     A: Matrix<T>, b: Matrix<T>,
     tol = 1e-10, maxIter = 5000
@@ -83,16 +82,21 @@ export async function solveJacobiAsync<T extends INumeric<T>>(
             const xFlat = await gpuJacobi(aFlat, bFlat, diagInv, n, tol, maxIter);
             return _fromF64Vec(A, n, xFlat);
         } catch (e) {
-            console.warn("[GPU] Jacobi fallback a Workers:", (e as Error).message);
+            console.warn("[GPU] Jacobi fallback a WasmWorkerPool:", (e as Error).message);
         }
     }
 
-    // 2. Worker pool asincrono (pool persistente)
-    if (n * n >= 500_000) {
-        const pool = new WorkerPool();
-        await pool.init();
-        const xFlat = await pool.jacobi(aFlat, bFlat, diagInv, n, tol, maxIter);
-        return _fromF64Vec(A, n, xFlat);
+    // 2. WasmWorkerPool (soglia interna 500×500):
+    //    • n² < 250 000  → WASM single-thread (jacobiSolve SIMD+diagInv precomp.)
+    //    • n² >= 250 000 → TS workers paralleli (SAB zero-copy, efficiente per iter)
+    const pool = WasmWorkerPool.instance;
+    if (pool) {
+        try {
+            const xFlat = await pool.jacobi(aFlat, bFlat, diagInv, n, tol, maxIter);
+            return _fromF64Vec(A, n, xFlat);
+        } catch (e) {
+            console.warn("[WasmWorkerPool] Jacobi fallback WASM ST:", (e as Error).message);
+        }
     }
 
     // 3. WASM → TS sincrono

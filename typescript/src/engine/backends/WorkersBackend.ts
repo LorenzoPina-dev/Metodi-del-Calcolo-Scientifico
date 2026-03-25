@@ -1,8 +1,18 @@
-// engine/backends/WorkersBackend.ts - Worker pool backend wrapper
+// engine/backends/WorkersBackend.ts
+//
+// Backend Worker pool — ora utilizza WasmWorkerPool invece di WorkerPool.
+//
+// Dispatch automatico interno a WasmWorkerPool:
+//   M*N  < WasmWorkerPool.threshold → single-thread WASM
+//   M*N >= WasmWorkerPool.threshold → multi-thread WASM workers
+//
+// Questo backend viene selezionato dal BackendDispatcher quando
+//   elements >= workersMinElements (default: 100 000)
+// ovvero per matrici con area ≥ 100k elementi (~316×316).
 
 import type { IBackend, BackendCapabilities } from "../types.js";
 import { globalPool } from "../BufferPool.js";
-import { WorkerPool } from "../../parallel/worker_pool.js";
+import { WasmWorkerPool } from "../../parallel/wasm_worker_pool.js";
 
 export class WorkersBackend implements IBackend {
   readonly name = "workers" as const;
@@ -10,13 +20,12 @@ export class WorkersBackend implements IBackend {
 
   async probe(): Promise<BackendCapabilities> {
     try {
-      // Usa l'istanza globale se disponibile, altrimenti crea una temporanea per il probe
-      if (WorkerPool.instance) {
+      if (WasmWorkerPool.instance) {
         return { available: true, perfScore: 0.3 };
       }
-      const pool = new WorkerPool();
+      const pool = new WasmWorkerPool();
       await pool.init();
-      WorkerPool.instance = pool;
+      WasmWorkerPool.instance = pool;
       return { available: true, perfScore: 0.3 };
     } catch {
       return { available: false };
@@ -27,10 +36,12 @@ export class WorkersBackend implements IBackend {
     A: Float64Array, B: Float64Array,
     M: number, K: number, N: number
   ): Promise<Float64Array> {
-    const pool = WorkerPool.instance;
+    const pool = WasmWorkerPool.instance;
     if (!pool) {
+      // Fallback seriale (non dovrebbe accadere dopo probe())
       return this._matmulSerial(A, B, new Float64Array(M * N), M, K, N);
     }
+    // WasmWorkerPool gestisce internamente la soglia ST/MT
     return pool.matmul(A, B, M, K, N);
   }
 
@@ -90,8 +101,8 @@ export class WorkersBackend implements IBackend {
   }
 
   dispose(): void {
-    if (WorkerPool.instance) {
-      WorkerPool.instance.shutdown();
+    if (WasmWorkerPool.instance) {
+      WasmWorkerPool.instance.shutdown();
     }
   }
 
@@ -101,8 +112,7 @@ export class WorkersBackend implements IBackend {
   ): Float64Array {
     C.fill(0);
     for (let i = 0; i < M; i++) {
-      const iK = i * K;
-      const iN = i * N;
+      const iK = i * K, iN = i * N;
       for (let k = 0; k < K; k++) {
         const aik = A[iK + k];
         if (aik === 0) continue;

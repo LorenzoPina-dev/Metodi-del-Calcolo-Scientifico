@@ -1,5 +1,5 @@
 import { initWasm } from "./wasm/wasm_bridge.js";
-import { WorkerPool } from "./parallel/worker_pool.js";
+import { WasmWorkerPool } from "./parallel/wasm_worker_pool.js";
 import { initGPU } from "./gpu/webgpu_backend.js";
 
 export interface ComputeCapabilities {
@@ -22,10 +22,10 @@ export async function initCompute(options?: {
 
     _initPromise = (async () => {
 
-        const useGPU = options?.gpu ?? true;
+        const useGPU     = options?.gpu     ?? true;
         const useWorkers = options?.workers ?? true;
 
-        // 🔹 Avvio PARALLELO (molto importante)
+        // Avvio PARALLELO di tutti i sottosistemi
         const wasmP = initWasm()
             .then(() => true)
             .catch(() => {
@@ -35,26 +35,24 @@ export async function initCompute(options?: {
 
         const workersP = (async () => {
             if (!useWorkers) return { ok: false, n: 0 };
-
             try {
-                const pool = new WorkerPool();
+                // WasmWorkerPool sostituisce WorkerPool:
+                // gestisce internamente la soglia WASM single-thread / multi-thread.
+                const pool = new WasmWorkerPool();
                 await pool.init();
-                // Salva l'istanza globale accessibile da test/altri moduli
-                WorkerPool.instance = pool;
-
+                WasmWorkerPool.instance = pool;
                 return {
                     ok: true,
                     n: (pool as any).workers?.length ?? 0
                 };
             } catch (e) {
-                console.warn("[Compute] Worker pool errore:", (e as Error).message);
+                console.warn("[Compute] WasmWorkerPool errore:", (e as Error).message);
                 return { ok: false, n: 0 };
             }
         })();
 
         const gpuP = (async () => {
             if (!useGPU) return false;
-
             try {
                 const timeout = new Promise<boolean>(res =>
                     setTimeout(() => res(false), 2000)
@@ -65,23 +63,25 @@ export async function initCompute(options?: {
             }
         })();
 
-        // 🔹 sync finale
         const [wasmOk, workersRes, gpuOk] = await Promise.all([
             wasmP,
             workersP,
             gpuP
         ]);
 
+        const threshold = WasmWorkerPool.threshold;
+        const side      = Math.round(Math.sqrt(threshold));
+
         const caps: ComputeCapabilities = {
-            wasm: wasmOk,
-            workers: workersRes.ok,
-            gpu: gpuOk,
+            wasm:       wasmOk,
+            workers:    workersRes.ok,
+            gpu:        gpuOk,
             numWorkers: workersRes.n
         };
 
         console.log(
             `[Compute] WASM=${wasmOk ? "✓" : "✗"}  ` +
-            `Workers=${workersRes.ok ? `✓ (${workersRes.n})` : "✗"}  ` +
+            `WasmWorkers=${workersRes.ok ? `✓ (${workersRes.n}, soglia=${side}×${side})` : "✗"}  ` +
             `GPU=${gpuOk ? "✓" : "✗"}`
         );
 

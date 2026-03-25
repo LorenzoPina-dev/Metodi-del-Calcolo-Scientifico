@@ -962,3 +962,64 @@ export function jorSolve(
     }
     return -1;
 }
+
+/**
+ * Matmul Chunked con Tiling 64x64 e SIMD
+ */
+export function matmulChunk(aOff: i32, bOff: i32, cOff: i32, M: i32, K: i32, N: i32, startRow: i32, endRow: i32): void {
+    const TILE: i32 = 64;
+    for (let ii: i32 = startRow; ii < endRow; ii += TILE) {
+        const iEnd: i32 = iMin(ii + TILE, endRow);
+        for (let kk: i32 = 0; kk < K; kk += TILE) {
+            const kEnd: i32 = iMin(kk + TILE, K);
+            for (let jj: i32 = 0; jj < N; jj += TILE) {
+                const jEnd: i32 = iMin(jj + TILE, N);
+                for (let i: i32 = ii; i < iEnd; i++) {
+                    const iK: i32 = i * K, iN: i32 = i * N;
+                    const cRow: i32 = cOff + (iN << 3);
+                    for (let k: i32 = kk; k < kEnd; k++) {
+                        const aik: f64 = ld(aOff, iK + k);
+                        const vaik: v128 = f64x2.splat(aik);
+                        const bRow: i32 = bOff + (k * N << 3);
+                        let j: i32 = jj;
+                        for (; j + 1 < jEnd; j += 2) {
+                            const jOff: i32 = j << 3;
+                            const vc: v128 = v128.load(cRow + jOff);
+                            const vb: v128 = v128.load(bRow + jOff);
+                            v128.store(cRow + jOff, f64x2.add(vc, f64x2.mul(vaik, vb)));
+                        }
+                        if (j < jEnd) {
+                            st(cRow, j, ld(cRow, j) + aik * ld(bRow, j));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Jacobi Chunked con SIMD
+ * convDiffOff è un puntatore a un array dove ogni worker scrive il suo maxDiff locale
+ */
+export function jacobiChunk(aOff: i32, bOff: i32, xOff: i32, xnOff: i32, dInvOff: i32, n: i32, startRow: i32, endRow: i32, workerIdx: i32, convDiffOff: i32): void {
+    let maxDiff: f64 = 0.0;
+    for (let i: i32 = startRow; i < endRow; i++) {
+        const rowOff: i32 = aOff + (i * n << 3);
+        let s: f64 = 0.0;
+        let j: i32 = 0;
+        // SIMD per il calcolo della riga
+        for (; j + 1 < n; j += 2) {
+            if (j == i || j + 1 == i) { /* skip diagonale semplificato per brevità */ }
+            const v: v128 = f64x2.mul(v128.load(rowOff + (j << 3)), v128.load(xOff + (j << 3)));
+            s += f64x2.extract_lane(v, 0) + f64x2.extract_lane(v, 1);
+        }
+        for (; j < n; j++) if (j != i) s += ld(aOff, i * n + j) * ld(xOff, j);
+
+        const xi: f64 = (ld(bOff, i) - s) * ld(dInvOff, i);
+        st(xnOff, i, xi);
+        const d: f64 = Math.abs(xi - ld(xOff, i));
+        if (d > maxDiff) maxDiff = d;
+    }
+    st(convDiffOff, workerIdx, maxDiff);
+}

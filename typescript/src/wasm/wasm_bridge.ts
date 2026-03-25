@@ -86,7 +86,7 @@ interface WasmExports {
     minCols      : (aOff: number, outOff: number, idxOff: number, R: number, C: number) => void;
     maxRows      : (aOff: number, outOff: number, idxOff: number, R: number, C: number) => void;
     minRows      : (aOff: number, outOff: number, idxOff: number, R: number, C: number) => void;
-    // property checks (return i32: 1=true, 0=false)
+    // property checks (return number: 1=true, 0=false)
     isSymmetricF64 : (aOff: number, n: number, tol: number) => number;
     isUpperTriF64  : (aOff: number, R: number, C: number, tol: number) => number;
     isLowerTriF64  : (aOff: number, R: number, C: number, tol: number) => number;
@@ -144,7 +144,8 @@ export class WasmBridge {
     }
 
     private static async _load(): Promise<WasmBridge> {
-        const memory = new WebAssembly.Memory({ initial: INITIAL_PAGES, maximum: MAX_PAGES });
+        const memory = new WebAssembly.Memory({ initial: INITIAL_PAGES, maximum: MAX_PAGES,
+  shared: true });
         let wasmBytes: BufferSource;
 
         if (typeof process !== "undefined" && process.versions?.node) {
